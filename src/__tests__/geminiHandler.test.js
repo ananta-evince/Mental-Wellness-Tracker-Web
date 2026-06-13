@@ -95,7 +95,7 @@ describe('geminiHandler', () => {
     });
 
     it('maps upstream 429 to rate limit error', async () => {
-      fetch.mockResolvedValueOnce({ ok: false, status: 429 });
+      fetch.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) });
 
       const result = await processGeminiRequest(
         { moodScore: 5, journalText: 'Hello world', exam: 'NEET' },
@@ -104,6 +104,27 @@ describe('geminiHandler', () => {
 
       expect(result.status).toBe(429);
       expect(result.payload.error).toMatch(/too many requests/i);
+    });
+
+    it('maps invalid API key to actionable error', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: {
+            message: 'API key not valid. Please pass a valid API key.',
+            details: [{ reason: 'API_KEY_INVALID' }],
+          },
+        }),
+      });
+
+      const result = await processGeminiRequest(
+        { moodScore: 5, journalText: 'Hello world', exam: 'NEET' },
+        'bad-key'
+      );
+
+      expect(result.status).toBe(502);
+      expect(result.payload.error).toMatch(/invalid gemini api key/i);
     });
 
     it('handles empty Gemini response', async () => {

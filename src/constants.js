@@ -17,7 +17,10 @@ export const SPARKLINE_WINDOW = 7;
 
 export const REQUEST_TIMEOUT_MS = 30000;
 
-export const GEMINI_MODEL = 'gemini-flash-latest';
+/** Models tried in order until one succeeds. */
+export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
+
+export const GEMINI_MODEL = GEMINI_MODELS[0];
 
 export const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 

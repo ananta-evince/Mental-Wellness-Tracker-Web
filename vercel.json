@@ -6,7 +6,7 @@
   "functions": {
     "api/gemini.js": {
       "maxDuration": 30,
-      "includeFiles": "lib/**,src/constants.js,src/utils/**"
+      "includeFiles": "lib/**"
     }
   },
   "rewrites": [
