@@ -1,5 +1,4 @@
 import { MAX_JOURNAL_LENGTH } from '../constants';
-import { sanitiseInput } from '../utils/sanitize';
 
 /**
  * @component
@@ -19,7 +18,7 @@ export default function JournalEntry({ value, onChange, disabled = false, valida
     : 'journal-hint journal-char-count';
 
   const handleChange = (event) => {
-    onChange(sanitiseInput(event.target.value));
+    onChange(event.target.value.slice(0, MAX_JOURNAL_LENGTH));
   };
 
   return (

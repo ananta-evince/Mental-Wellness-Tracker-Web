@@ -16,6 +16,11 @@ describe('HistoryView', () => {
     expect(screen.getByText(/no entries yet/i)).toBeInTheDocument();
   });
 
+  it('shows sparkline from first entry', () => {
+    render(<HistoryView entries={[makeEntry('0', 6, new Date().toISOString())]} />);
+    expect(screen.getByRole('img', { name: /mood trend sparkline/i })).toBeInTheDocument();
+  });
+
   it('shows sparkline for last 7 entries', () => {
     const entries = Array.from({ length: 10 }, (_, i) =>
       makeEntry(String(i), i % 10 + 1, new Date(2026, 0, i + 1).toISOString())

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MoodSelector, { MOOD_VALUES } from '../components/MoodSelector';
 
@@ -31,5 +31,14 @@ describe('MoodSelector', () => {
     render(<MoodSelector selectedMood={null} onSelect={onSelect} />);
     await user.click(screen.getByRole('button', { name: 'Mood 3 out of 10' }));
     expect(onSelect).toHaveBeenCalledWith(3);
+  });
+
+  it('navigates moods with arrow keys', () => {
+    const onSelect = vi.fn();
+    render(<MoodSelector selectedMood={5} onSelect={onSelect} />);
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Mood 5 out of 10' }), {
+      key: 'ArrowRight',
+    });
+    expect(onSelect).toHaveBeenCalledWith(6);
   });
 });

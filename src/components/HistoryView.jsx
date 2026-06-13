@@ -29,25 +29,22 @@ export function buildSparklinePoints(moods) {
  * }} props
  */
 export default function HistoryView({ entries }) {
-  const sortedEntries = useMemo(
-    () =>
-      [...entries].sort(
+  const { sortedEntries, lastSevenMoods } = useMemo(() => {
+    const chronological = [...entries].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    return {
+      sortedEntries: [...entries].sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       ),
-    [entries]
-  );
-
-  const lastSevenMoods = useMemo(
-    () =>
-      [...entries]
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        .slice(-SPARKLINE_WINDOW)
-        .map((e) => e.mood),
-    [entries]
-  );
+      lastSevenMoods: chronological.slice(-SPARKLINE_WINDOW).map((e) => e.mood),
+    };
+  }, [entries]);
 
   const sparklinePoints = useMemo(() => buildSparklinePoints(lastSevenMoods), [lastSevenMoods]);
-  const sparklineArea = sparklinePoints ? `${sparklinePoints} 100,32 0,32` : '';
+  const sparklineArea =
+    lastSevenMoods.length >= 2 && sparklinePoints ? `${sparklinePoints} 100,32 0,32` : '';
 
   const avgMood = useMemo(() => {
     if (lastSevenMoods.length === 0) return null;
@@ -69,10 +66,10 @@ export default function HistoryView({ entries }) {
           </p>
         </div>
 
-        {lastSevenMoods.length >= 2 && (
+        {lastSevenMoods.length >= 1 && (
           <div className="min-w-[200px] rounded-2xl border border-wellness-100 bg-gradient-to-br from-wellness-50 to-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-wellness-700">
-              Mood trend · last {Math.min(lastSevenMoods.length, SPARKLINE_WINDOW)}
+              Mood trend · last {lastSevenMoods.length}
             </p>
             <svg
               viewBox="0 0 100 32"
@@ -98,7 +95,7 @@ export default function HistoryView({ entries }) {
             </svg>
             {avgMood && (
               <p className="mt-1 text-xs text-slate-600">
-                7-day avg:{' '}
+                Avg (last {lastSevenMoods.length}):{' '}
                 <span className="font-bold text-wellness-800">{avgMood}/10</span>
               </p>
             )}

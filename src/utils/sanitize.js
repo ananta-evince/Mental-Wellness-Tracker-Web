@@ -1,49 +1,43 @@
-import { MAX_JOURNAL_LENGTH } from '../constants';
+import { MAX_JOURNAL_LENGTH, SECTION_HEADINGS } from '../constants';
+
+const EXACT_HEADING_MAP = {
+  [SECTION_HEADINGS.stress.toLowerCase()]: 'stressAnalysis',
+  [SECTION_HEADINGS.coping.toLowerCase()]: 'copingStrategies',
+  [SECTION_HEADINGS.mindfulness.toLowerCase()]: 'mindfulnessExercise',
+  'a note for you': 'motivationalMessage',
+};
 
 const SECTION_PATTERNS = [
-  {
-    key: 'stressAnalysis',
-    labels: ['stress', 'emotional', 'pattern', 'trigger', 'notice', 'hidden'],
-  },
-  {
-    key: 'copingStrategies',
-    labels: ['coping', 'strateg', 'action', 'tip', 'try this'],
-  },
-  {
-    key: 'mindfulnessExercise',
-    labels: ['mindful', 'breath', 'exercise', 'meditat', 'focus', 'ground'],
-  },
-  {
-    key: 'motivationalMessage',
-    labels: ['motivat', 'encourag', 'note for you', 'remember', 'believe', 'proud'],
-  },
+  { key: 'stressAnalysis', labels: ['stress', 'emotional', 'pattern', 'trigger', 'notice', 'hidden'] },
+  { key: 'copingStrategies', labels: ['coping', 'strateg', 'action', 'tip', 'try this'] },
+  { key: 'mindfulnessExercise', labels: ['mindful', 'breath', 'exercise', 'meditat', 'focus', 'ground'] },
+  { key: 'motivationalMessage', labels: ['motivat', 'encourag', 'note for you', 'remember', 'believe', 'proud'] },
 ];
 
 /**
- * Strips HTML tags and truncates journal text before API calls.
+ * Removes ASCII control characters from user text.
+ * @param {string} text
+ */
+function stripControlChars(text) {
+  let result = '';
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code >= 32 && code !== 127) result += text[i];
+  }
+  return result;
+}
+
+/**
+ * Strips HTML tags, control characters, and truncates journal text before API calls.
  * @param {string} text
  * @returns {string}
  */
 export function sanitiseInput(text) {
   if (typeof text !== 'string') return '';
-  return text.replace(/<[^>]*>/g, '').trim().slice(0, MAX_JOURNAL_LENGTH);
-}
 
-/** @deprecated Alias for sanitiseInput */
-export function sanitizeText(text) {
-  return sanitiseInput(text);
-}
-
-function matchSectionHeader(line) {
-  const cleaned = line.replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, '').trim();
-
-  for (const section of SECTION_PATTERNS) {
-    if (section.labels.some((label) => cleaned.toLowerCase().includes(label))) {
-      const body = cleaned.replace(/^[\d.)]+\s*/, '').trim();
-      return { key: section.key, body: body.length > cleaned.length / 2 ? '' : cleaned };
-    }
-  }
-  return null;
+  return stripControlChars(text.replace(/<[^>]*>/g, '').replace(/javascript:/gi, ''))
+    .trim()
+    .slice(0, MAX_JOURNAL_LENGTH);
 }
 
 /**
@@ -54,13 +48,16 @@ export function parseGeminiResponse(rawText) {
   const fallback =
     rawText?.trim() || 'We could not generate insights right now. Please try again in a moment.';
 
+  const exactSections = parseExactHeadings(fallback);
+  const filledExact = Object.values(exactSections).filter(Boolean).length;
+  if (filledExact >= 2) return exactSections;
+
   const hasMarkdownHeaders =
     /^#{1,3}\s/m.test(fallback) || /^\*\*[^*]+\*\*:?\s*$/m.test(fallback);
 
   if (hasMarkdownHeaders) {
     const sections = parseGeminiResponseFromHeaders(fallback);
-    const filledCount = Object.values(sections).filter(Boolean).length;
-    if (filledCount >= 2) return sections;
+    if (Object.values(sections).filter(Boolean).length >= 2) return sections;
   }
 
   return parseGeminiResponseByParagraphs(fallback, {
@@ -69,6 +66,59 @@ export function parseGeminiResponse(rawText) {
     mindfulnessExercise: '',
     motivationalMessage: '',
   });
+}
+
+/**
+ * Parses responses that use the exact SECTION_HEADINGS from the system prompt.
+ * @param {string} text
+ */
+function parseExactHeadings(text) {
+  const sections = {
+    stressAnalysis: '',
+    copingStrategies: '',
+    mindfulnessExercise: '',
+    motivationalMessage: '',
+  };
+
+  const lines = text.split('\n');
+  let currentKey = null;
+  const buffers = { stressAnalysis: [], copingStrategies: [], mindfulnessExercise: [], motivationalMessage: [] };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const heading = trimmed.replace(/^#{1,3}\s*/, '').replace(/^\*\*|\*\*$/g, '').trim();
+    const exactKey = EXACT_HEADING_MAP[heading.toLowerCase()];
+
+    if (exactKey) {
+      currentKey = exactKey;
+      continue;
+    }
+
+    if (currentKey) buffers[currentKey].push(trimmed);
+    else buffers.stressAnalysis.push(trimmed);
+  }
+
+  for (const key of Object.keys(sections)) {
+    if (buffers[key].length > 0) sections[key] = buffers[key].join('\n').trim();
+  }
+
+  return sections;
+}
+
+function matchSectionHeader(line) {
+  const cleaned = line.replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, '').trim();
+  const exactKey = EXACT_HEADING_MAP[cleaned.toLowerCase()];
+  if (exactKey) return { key: exactKey, body: '' };
+
+  for (const section of SECTION_PATTERNS) {
+    if (section.labels.some((label) => cleaned.toLowerCase().includes(label))) {
+      const body = cleaned.replace(/^[\d.)]+\s*/, '').trim();
+      return { key: section.key, body: body.length > cleaned.length / 2 ? '' : cleaned };
+    }
+  }
+  return null;
 }
 
 function parseGeminiResponseFromHeaders(fallback) {

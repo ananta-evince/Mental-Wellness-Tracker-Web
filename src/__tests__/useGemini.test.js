@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { buildSystemPrompt } from '../constants';
+import { buildSystemPrompt, SECTION_HEADINGS } from '../constants';
 import { useGemini } from '../hooks/useGemini';
 
 describe('useGemini', () => {
@@ -15,6 +15,11 @@ describe('useGemini', () => {
     import.meta.env.VITE_GEMINI_API_KEY = originalEnv;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it('exposes only data, loading, error, and call', () => {
+    const { result } = renderHook(() => useGemini());
+    expect(Object.keys(result.current).sort()).toEqual(['call', 'data', 'error', 'loading']);
   });
 
   it('sets loading true during call', async () => {
@@ -80,7 +85,16 @@ describe('useGemini', () => {
             content: {
               parts: [
                 {
-                  text: 'Stress noted.\n\n1. Take breaks\n\nBreathe slowly.\n\nYou have got this.',
+                  text: [
+                    `## ${SECTION_HEADINGS.stress}`,
+                    'Exam pressure noted.',
+                    `## ${SECTION_HEADINGS.coping}`,
+                    '1. Take breaks',
+                    `## ${SECTION_HEADINGS.mindfulness}`,
+                    'Box breathing.',
+                    '## A note for you',
+                    'You have got this.',
+                  ].join('\n'),
                 },
               ],
             },
@@ -100,13 +114,38 @@ describe('useGemini', () => {
     });
 
     expect(result.current.data).not.toBeNull();
-    expect(result.current.data.rawText).toContain('Stress noted');
-    expect(result.current.data.sections).toBeDefined();
+    expect(result.current.data.sections.stressAnalysis).toMatch(/exam pressure/i);
+    expect(result.current.data.sections.mindfulnessExercise).toMatch(/box breathing/i);
     expect(result.current.error).toBeNull();
 
     const [, options] = fetch.mock.calls[0];
     const body = JSON.parse(options.body);
     expect(body.systemInstruction.parts[0].text).toBe(buildSystemPrompt('NEET'));
+    expect(body.systemInstruction.parts[0].text).toContain(SECTION_HEADINGS.stress);
     expect(body.contents[0].parts[0].text).toContain('Exam: NEET');
+  });
+
+  it('rejects missing API key without calling fetch', async () => {
+    import.meta.env.VITE_GEMINI_API_KEY = '';
+
+    const { result } = renderHook(() => useGemini());
+
+    await act(async () => {
+      await result.current.call({ moodScore: 5, journalText: 'Valid text', exam: 'NEET' });
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.current.error).toMatch(/API key/i);
+  });
+
+  it('rejects invalid mood before calling fetch', async () => {
+    const { result } = renderHook(() => useGemini());
+
+    await act(async () => {
+      await result.current.call({ moodScore: 0, journalText: 'Valid text', exam: 'NEET' });
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.current.error).toMatch(/valid mood/i);
   });
 });

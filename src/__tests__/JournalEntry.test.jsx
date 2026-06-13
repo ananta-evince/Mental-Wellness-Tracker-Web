@@ -42,14 +42,21 @@ describe('JournalEntry', () => {
     expect(lastCall.length).toBeLessThanOrEqual(MAX_JOURNAL_LENGTH);
   });
 
-  it('strips HTML tags from input', () => {
-    let current = '';
-    render(<JournalEntry value={current} onChange={(v) => { current = v; }} />);
+  it('shows validation error with aria-invalid', () => {
+    render(
+      <JournalEntry
+        value=""
+        onChange={() => {}}
+        validationError="Please write at least a few words before submitting."
+      />
+    );
 
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: '<b>Hello</b> world' },
-    });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true');
+  });
 
-    expect(current).toBe('Hello world');
+  it('pairs label with textarea via htmlFor', () => {
+    render(<JournalEntry value="" onChange={() => {}} />);
+    expect(screen.getByLabelText(/today's journal/i)).toBeInTheDocument();
   });
 });

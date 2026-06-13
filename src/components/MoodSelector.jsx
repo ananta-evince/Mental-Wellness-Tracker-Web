@@ -47,6 +47,7 @@ export default function MoodSelector({
   );
 
   const sliderValue = selectedMood ?? 5;
+  const moodScoreLabel = selectedMood !== null ? `${selectedMood}/10` : 'Select mood';
 
   return (
     <fieldset
@@ -75,8 +76,14 @@ export default function MoodSelector({
           <label htmlFor="mood-slider" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Mood slider
           </label>
-          <span className="rounded-full bg-wellness-100 px-2.5 py-0.5 text-xs font-bold text-wellness-800">
-            {sliderValue}/10
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+              selectedMood !== null
+                ? 'bg-wellness-100 text-wellness-800'
+                : 'bg-slate-100 text-slate-500'
+            }`}
+          >
+            {moodScoreLabel}
           </span>
         </div>
         <input
@@ -89,7 +96,7 @@ export default function MoodSelector({
           disabled={disabled}
           aria-valuemin={1}
           aria-valuemax={10}
-          aria-valuenow={sliderValue}
+          aria-valuenow={selectedMood ?? undefined}
           aria-label="Mood slider from 1 to 10"
           onChange={(event) => onSelect(Number(event.target.value))}
           className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-red-200 via-amber-200 to-emerald-300 accent-wellness-600 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-wellness-600 [&::-webkit-slider-thumb]:shadow-md"
