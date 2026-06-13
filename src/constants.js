@@ -21,6 +21,11 @@ export const GEMINI_MODEL = 'gemini-flash-latest';
 
 export const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+/** Client-side proxy endpoint — API key never leaves the server. */
+export const GEMINI_PROXY_URL = '/api/gemini';
+
+export const MIN_CALL_INTERVAL_MS = 2000;
+
 export const EXAMS = ['NEET', 'JEE', 'CUET', 'CAT', 'GATE', 'UPSC'];
 
 export const EXAM_META = {
@@ -39,6 +44,20 @@ export const SECTION_HEADINGS = {
 };
 
 export const FEATURE_PILLS = ['Daily journaling', 'Mood tracking', 'AI insights', 'Mindfulness'];
+
+export const APP_PAGES = {
+  EXAM_JOURNEY: 'exam-journey',
+  CHECK_IN: 'check-in',
+  INSIGHTS: 'insights',
+  HISTORY: 'history',
+};
+
+export const SIDEBAR_NAV_ITEMS = [
+  { pageId: APP_PAGES.EXAM_JOURNEY, label: 'Your exam journey', icon: '🎯' },
+  { pageId: APP_PAGES.CHECK_IN, label: "Today's check-in", icon: '✍️' },
+  { pageId: APP_PAGES.INSIGHTS, label: 'Your personalised support', icon: '✨' },
+  { pageId: APP_PAGES.HISTORY, label: 'Your journey so far', icon: '📔' },
+];
 
 /**
  * Builds the Gemini system prompt with the selected exam referenced by name.

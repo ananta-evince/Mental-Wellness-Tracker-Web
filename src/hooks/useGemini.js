@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { buildSystemPrompt, GEMINI_API_URL, REQUEST_TIMEOUT_MS } from '../constants';
+import { GEMINI_PROXY_URL, MIN_CALL_INTERVAL_MS, MIN_MOOD, MAX_MOOD } from '../constants';
 import { parseGeminiResponse, sanitiseInput } from '../utils/sanitize';
-import { isValidMoodScore } from '../utils/validation';
+import { isValidExam, isValidMoodScore } from '../utils/validation';
 
 /**
- * Encapsulates all Gemini API calls. Exposes only { data, loading, error, call }.
+ * Encapsulates wellness API calls via the server proxy. Exposes only { data, loading, error, call }.
  * @returns {{ data: object | null, loading: boolean, error: string | null, call: Function }}
  */
 export function useGemini() {
@@ -12,18 +12,24 @@ export function useGemini() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
+  const lastCallAtRef = useRef(0);
 
   const call = useCallback(async ({ moodScore, journalText, exam }) => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-    if (!apiKey || apiKey === 'your_key_here') {
-      setError('API key missing. Add VITE_GEMINI_API_KEY to your .env file.');
+    const now = Date.now();
+    if (now - lastCallAtRef.current < MIN_CALL_INTERVAL_MS) {
+      setError('Please wait a moment before submitting again.');
       setData(null);
       return null;
     }
 
     if (!isValidMoodScore(moodScore)) {
-      setError('Please select a valid mood between 1 and 10.');
+      setError(`Please select a valid mood between ${MIN_MOOD} and ${MAX_MOOD}.`);
+      setData(null);
+      return null;
+    }
+
+    if (!isValidExam(exam)) {
+      setError('Please select a valid exam before submitting.');
       setData(null);
       return null;
     }
@@ -39,44 +45,36 @@ export function useGemini() {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     setLoading(true);
     setError(null);
     setData(null);
 
     try {
-      const systemPrompt = buildSystemPrompt(exam);
-      const userMessage = `Exam: ${exam}. Mood score: ${moodScore}/10. Journal entry: ${sanitisedText}`;
-
-      const response = await fetch(GEMINI_API_URL, {
+      const response = await fetch(GEMINI_PROXY_URL, {
         method: 'POST',
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moodScore, journalText: sanitisedText, exam }),
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const statusHint =
-          response.status === 429
-            ? 'Too many requests. Please wait a moment and try again.'
-            : 'Unable to reach the wellness companion. Please try again shortly.';
-        throw new Error(statusHint);
+        throw new Error(
+          responseData.error ??
+            (response.status === 429
+              ? 'Too many requests. Please wait a moment and try again.'
+              : 'Unable to reach the wellness companion. Please try again shortly.')
+        );
       }
 
-      const responseData = await response.json();
-      const rawText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
-
+      const rawText = responseData.rawText?.trim() ?? '';
       if (!rawText) {
         throw new Error('We received an empty response. Please try again.');
       }
 
+      lastCallAtRef.current = Date.now();
       const result = {
         rawText,
         sections: parseGeminiResponse(rawText),
@@ -86,7 +84,7 @@ export function useGemini() {
       return result;
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setError('The request took too long. Please check your connection and try again.');
+        setError('The request was cancelled. Please try again.');
       } else {
         setError(
           err instanceof Error && err.message
@@ -97,7 +95,6 @@ export function useGemini() {
       setData(null);
       return null;
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, []);

@@ -48,29 +48,19 @@ export function buildSparklinePoints(moods) {
 }
 
 /**
- * Sorts entries newest-first for display.
+ * Sorts entries and extracts sparkline moods in a single pass.
  * @param {Array<object>} entries
- * @returns {Array<object>}
  */
-function sortEntriesNewestFirst(entries) {
-  return [...entries].sort(
-    (firstEntry, secondEntry) =>
-      new Date(secondEntry.timestamp).getTime() - new Date(firstEntry.timestamp).getTime()
-  );
-}
-
-/**
- * Extracts moods from the last SPARKLINE_WINDOW entries in chronological order.
- * @param {Array<object>} entries
- * @returns {number[]}
- */
-function extractLastSevenMoods(entries) {
+function deriveHistoryData(entries) {
   const chronological = [...entries].sort(
     (firstEntry, secondEntry) =>
       new Date(firstEntry.timestamp).getTime() - new Date(secondEntry.timestamp).getTime()
   );
 
-  return chronological.slice(-SPARKLINE_WINDOW).map((entry) => entry.mood);
+  return {
+    sortedEntries: [...chronological].reverse(),
+    lastSevenMoods: chronological.slice(-SPARKLINE_WINDOW).map((entry) => entry.mood),
+  };
 }
 
 /**
@@ -91,8 +81,10 @@ function computeAverageMood(moods) {
  * @param {Array<object>} props.entries - journal check-in entries
  */
 function HistoryView({ entries }) {
-  const sortedEntries = useMemo(() => sortEntriesNewestFirst(entries), [entries]);
-  const lastSevenMoods = useMemo(() => extractLastSevenMoods(entries), [entries]);
+  const { sortedEntries, lastSevenMoods } = useMemo(
+    () => deriveHistoryData(entries),
+    [entries]
+  );
   const sparklinePoints = useMemo(() => buildSparklinePoints(lastSevenMoods), [lastSevenMoods]);
   const sparklineArea = useMemo(() => {
     if (lastSevenMoods.length < 2 || !sparklinePoints) return '';
@@ -106,7 +98,7 @@ function HistoryView({ entries }) {
       : `${entries.length} check-in${entries.length === 1 ? '' : 's'} recorded`;
 
   return (
-    <section aria-labelledby="history-heading" className="surface-card">
+    <section aria-labelledby="history-heading" className="surface-card scroll-mt-24">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <span className="section-badge">History</span>

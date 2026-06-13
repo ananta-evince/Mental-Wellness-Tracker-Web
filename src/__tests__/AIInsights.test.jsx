@@ -43,4 +43,11 @@ describe('AIInsights', () => {
 
     expect(container.querySelector('[aria-live="polite"]')).toBeInTheDocument();
   });
+
+  it('shows empty state when no sections', () => {
+    render(<AIInsights sections={null} loading={false} error={null} />);
+
+    expect(screen.getByRole('heading', { name: /your wellness companion/i })).toBeInTheDocument();
+    expect(screen.getByText(/submit your journal and mood/i)).toBeInTheDocument();
+  });
 });

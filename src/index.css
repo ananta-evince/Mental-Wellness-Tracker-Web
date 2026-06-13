@@ -17,6 +17,71 @@
     @apply relative min-h-screen overflow-x-hidden bg-slate-50 bg-mesh-gradient;
   }
 
+  .sidebar-shell {
+    @apply fixed inset-y-0 left-0 z-50 flex h-screen w-[17.5rem] -translate-x-full flex-col border-r border-black/10 bg-gradient-to-b from-[#0c4a44] via-wellness-900 to-[#0a3d38] px-4 py-6 shadow-2xl transition-transform duration-300 ease-out lg:translate-x-0;
+  }
+
+  .sidebar-shell-open {
+    @apply translate-x-0;
+  }
+
+  .sidebar-backdrop {
+    @apply fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm;
+  }
+
+  .mobile-topbar {
+    @apply sticky top-0 z-30 flex items-center justify-between border-b border-wellness-100/60 bg-white/90 px-4 py-3 backdrop-blur-md lg:hidden;
+  }
+
+  .sidebar-brand {
+    @apply flex items-center gap-3 border-b border-white/[0.08] pb-5;
+  }
+
+  .sidebar-logo {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-wellness-400/90 to-wellness-600 text-lg shadow-sm ring-1 ring-white/20;
+  }
+
+  .sidebar-section-label {
+    @apply mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-wellness-300/70;
+  }
+
+  .sidebar-link {
+    @apply relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-wellness-100/75 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wellness-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c4a44];
+  }
+
+  .sidebar-link-icon {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-base;
+  }
+
+  .sidebar-link-active {
+    @apply bg-white/[0.1] font-semibold text-white hover:bg-white/[0.12];
+  }
+
+  .sidebar-link-active::before {
+    content: '';
+    @apply absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-wellness-300;
+  }
+
+  .sidebar-link-active .sidebar-link-icon {
+    @apply bg-wellness-500/25 ring-1 ring-wellness-400/30;
+  }
+
+  .sidebar-footer {
+    @apply mt-auto shrink-0 border-t border-white/[0.08] pt-4;
+  }
+
+  .sidebar-exam-badge {
+    @apply mt-2 flex items-center gap-2.5 rounded-xl bg-black/15 px-3 py-2.5 ring-1 ring-white/[0.08];
+  }
+
+  .main-content-shell {
+    @apply relative flex min-h-screen min-w-0 flex-col lg:ml-[17.5rem];
+  }
+
+  .hero-compact {
+    @apply relative border-b border-wellness-100/60 bg-gradient-to-br from-white/80 via-wellness-50/30 to-calm-50/20;
+  }
+
   .surface-card {
     @apply rounded-2xl border border-white/80 bg-white/90 p-6 shadow-card backdrop-blur-sm sm:p-8;
   }

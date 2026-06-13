@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 
@@ -13,6 +13,13 @@ vi.mock('../hooks/useGemini', () => ({
     call: mockCall,
   }),
 }));
+
+async function goToCheckInPage(user) {
+  await user.click(screen.getByRole('button', { name: "Today's check-in" }));
+  await waitFor(() => {
+    expect(screen.getByRole('heading', { name: /today's check-in/i })).toBeInTheDocument();
+  });
+}
 
 describe('App', () => {
   beforeEach(() => {
@@ -33,6 +40,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await goToCheckInPage(user);
     await user.click(screen.getByRole('button', { name: /submit journal entry/i }));
 
     expect(screen.getByText(/few words/i)).toBeInTheDocument();
@@ -44,6 +52,7 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('radio', { name: 'JEE' }));
+    await goToCheckInPage(user);
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'Mock test anxiety today' },
     });
@@ -63,5 +72,20 @@ describe('App', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+  });
+
+  it('navigates between sidebar pages', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByRole('heading', { name: /your exam journey/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: "Today's check-in" }));
+    expect(screen.getByRole('heading', { name: /today's check-in/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Your journey so far' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /your journey so far/i })).toBeInTheDocument();
+    });
   });
 });

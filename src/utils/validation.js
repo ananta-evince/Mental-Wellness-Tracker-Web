@@ -1,4 +1,4 @@
-import { MAX_MOOD, MIN_MOOD } from '../constants';
+import { EXAMS, MAX_MOOD, MIN_MOOD } from '../constants';
 import { sanitiseInput } from './sanitize';
 
 /**
@@ -8,6 +8,15 @@ import { sanitiseInput } from './sanitize';
  */
 export function isValidMoodScore(moodScore) {
   return Number.isInteger(moodScore) && moodScore >= MIN_MOOD && moodScore <= MAX_MOOD;
+}
+
+/**
+ * Validates exam name against the allowed whitelist.
+ * @param {unknown} exam
+ * @returns {boolean}
+ */
+export function isValidExam(exam) {
+  return typeof exam === 'string' && EXAMS.includes(exam);
 }
 
 /**
@@ -27,7 +36,11 @@ export function validateCheckInFields(journalText, selectedMood) {
     ? null
     : 'Please write at least a few words before submitting.';
   const moodError =
-    selectedMood === null ? 'Please select how you are feeling on the mood scale.' : null;
+    selectedMood === null
+      ? 'Please select how you are feeling on the mood scale.'
+      : !isValidMoodScore(selectedMood)
+        ? 'Please select how you are feeling on the mood scale.'
+        : null;
 
   return {
     sanitised,

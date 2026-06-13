@@ -1,18 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { buildSystemPrompt, SECTION_HEADINGS } from '../constants';
+import { GEMINI_PROXY_URL, MIN_CALL_INTERVAL_MS, SECTION_HEADINGS } from '../constants';
 import { useGemini } from '../hooks/useGemini';
 
 describe('useGemini', () => {
-  const originalEnv = import.meta.env.VITE_GEMINI_API_KEY;
-
   beforeEach(() => {
-    import.meta.env.VITE_GEMINI_API_KEY = 'test-api-key';
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.stubGlobal('fetch', vi.fn());
   });
 
   afterEach(() => {
-    import.meta.env.VITE_GEMINI_API_KEY = originalEnv;
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -30,9 +28,7 @@ describe('useGemini', () => {
           resolveFetch = () =>
             resolve({
               ok: true,
-              json: async () => ({
-                candidates: [{ content: { parts: [{ text: 'You are doing great.' }] } }],
-              }),
+              json: async () => ({ rawText: 'You are doing great.' }),
             });
         })
     );
@@ -59,7 +55,11 @@ describe('useGemini', () => {
   });
 
   it('sets error state on failed fetch', async () => {
-    fetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'Server error' }),
+    });
 
     const { result } = renderHook(() => useGemini());
 
@@ -71,36 +71,26 @@ describe('useGemini', () => {
       });
     });
 
-    expect(result.current.error).toMatch(/try again/i);
+    expect(result.current.error).toBe('Server error');
     expect(result.current.data).toBeNull();
     expect(result.current.loading).toBe(false);
   });
 
-  it('populates data on success', async () => {
+  it('populates data on success via proxy', async () => {
+    const rawText = [
+      `## ${SECTION_HEADINGS.stress}`,
+      'Exam pressure noted.',
+      `## ${SECTION_HEADINGS.coping}`,
+      '1. Take breaks',
+      `## ${SECTION_HEADINGS.mindfulness}`,
+      'Box breathing.',
+      '## A note for you',
+      'You have got this.',
+    ].join('\n');
+
     fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: [
-                    `## ${SECTION_HEADINGS.stress}`,
-                    'Exam pressure noted.',
-                    `## ${SECTION_HEADINGS.coping}`,
-                    '1. Take breaks',
-                    `## ${SECTION_HEADINGS.mindfulness}`,
-                    'Box breathing.',
-                    '## A note for you',
-                    'You have got this.',
-                  ].join('\n'),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: async () => ({ rawText }),
     });
 
     const { result } = renderHook(() => useGemini());
@@ -118,24 +108,56 @@ describe('useGemini', () => {
     expect(result.current.data.sections.mindfulnessExercise).toMatch(/box breathing/i);
     expect(result.current.error).toBeNull();
 
-    const [, options] = fetch.mock.calls[0];
+    const [url, options] = fetch.mock.calls[0];
+    expect(url).toBe(GEMINI_PROXY_URL);
+    expect(options.method).toBe('POST');
     const body = JSON.parse(options.body);
-    expect(body.systemInstruction.parts[0].text).toBe(buildSystemPrompt('NEET'));
-    expect(body.systemInstruction.parts[0].text).toContain(SECTION_HEADINGS.stress);
-    expect(body.contents[0].parts[0].text).toContain('Exam: NEET');
+    expect(body.exam).toBe('NEET');
+    expect(body.moodScore).toBe(4);
+    expect(body.journalText).toBe('Feeling overwhelmed');
   });
 
-  it('rejects missing API key without calling fetch', async () => {
-    import.meta.env.VITE_GEMINI_API_KEY = '';
+  it('rejects rapid successive calls', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ rawText: 'Insight one.' }),
+    });
 
     const { result } = renderHook(() => useGemini());
 
     await act(async () => {
-      await result.current.call({ moodScore: 5, journalText: 'Valid text', exam: 'NEET' });
+      await result.current.call({ moodScore: 5, journalText: 'First entry', exam: 'NEET' });
     });
 
-    expect(fetch).not.toHaveBeenCalled();
-    expect(result.current.error).toMatch(/API key/i);
+    await act(async () => {
+      await result.current.call({ moodScore: 6, journalText: 'Second entry', exam: 'NEET' });
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toMatch(/wait a moment/i);
+  });
+
+  it('allows call after minimum interval', async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ rawText: 'Insight text.' }),
+    });
+
+    const { result } = renderHook(() => useGemini());
+
+    await act(async () => {
+      await result.current.call({ moodScore: 5, journalText: 'First entry', exam: 'NEET' });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(MIN_CALL_INTERVAL_MS + 100);
+    });
+
+    await act(async () => {
+      await result.current.call({ moodScore: 6, journalText: 'Second entry', exam: 'NEET' });
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('rejects invalid mood before calling fetch', async () => {
@@ -147,5 +169,43 @@ describe('useGemini', () => {
 
     expect(fetch).not.toHaveBeenCalled();
     expect(result.current.error).toMatch(/valid mood/i);
+  });
+
+  it('rejects invalid exam before calling fetch', async () => {
+    const { result } = renderHook(() => useGemini());
+
+    await act(async () => {
+      await result.current.call({ moodScore: 5, journalText: 'Valid text', exam: 'INVALID' });
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.current.error).toMatch(/valid exam/i);
+  });
+
+  it('handles empty proxy response', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ rawText: '   ' }),
+    });
+
+    const { result } = renderHook(() => useGemini());
+
+    await act(async () => {
+      await result.current.call({ moodScore: 5, journalText: 'Valid text', exam: 'NEET' });
+    });
+
+    expect(result.current.error).toMatch(/empty response/i);
+  });
+
+  it('handles aborted requests', async () => {
+    fetch.mockRejectedValueOnce(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+
+    const { result } = renderHook(() => useGemini());
+
+    await act(async () => {
+      await result.current.call({ moodScore: 5, journalText: 'Valid text', exam: 'NEET' });
+    });
+
+    expect(result.current.error).toMatch(/cancelled/i);
   });
 });

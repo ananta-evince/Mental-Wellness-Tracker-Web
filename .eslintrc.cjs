@@ -23,5 +23,5 @@ module.exports = {
     'react/prop-types': 'off',
     'no-console': 'error',
   },
-  ignorePatterns: ['dist', 'node_modules', 'coverage'],
+  ignorePatterns: ['dist', 'node_modules', 'coverage', 'api'],
 };

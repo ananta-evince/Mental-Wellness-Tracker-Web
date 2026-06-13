@@ -41,4 +41,37 @@ describe('MoodSelector', () => {
     });
     expect(onSelect).toHaveBeenCalledWith(6);
   });
+
+  it('navigates with ArrowLeft, Home, and End keys', () => {
+    const onSelect = vi.fn();
+    render(<MoodSelector selectedMood={5} onSelect={onSelect} />);
+    const current = screen.getByRole('button', { name: 'Mood 5 out of 10' });
+
+    fireEvent.keyDown(current, { key: 'ArrowLeft' });
+    expect(onSelect).toHaveBeenCalledWith(4);
+
+    fireEvent.keyDown(current, { key: 'Home' });
+    expect(onSelect).toHaveBeenCalledWith(1);
+
+    fireEvent.keyDown(current, { key: 'End' });
+    expect(onSelect).toHaveBeenCalledWith(10);
+  });
+
+  it('updates mood via range slider', () => {
+    const onSelect = vi.fn();
+    render(<MoodSelector selectedMood={5} onSelect={onSelect} />);
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '8' } });
+    expect(onSelect).toHaveBeenCalledWith(8);
+  });
+
+  it('shows validation error with role alert', () => {
+    render(
+      <MoodSelector
+        selectedMood={null}
+        onSelect={() => {}}
+        validationError="Please select how you are feeling."
+      />
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(/how you are feeling/i);
+  });
 });

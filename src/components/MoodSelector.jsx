@@ -73,17 +73,17 @@ function MoodSelector({ selectedMood, onSelect, disabled = false, validationErro
       aria-describedby={validationError ? 'mood-error' : undefined}
       aria-invalid={validationError ? 'true' : 'false'}
     >
-      <div className="mb-3 flex items-center gap-2">
-        <span
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-calm-100 text-base"
-          aria-hidden="true"
-        >
-          💭
-        </span>
-        <legend id="mood-legend" className="text-sm font-semibold text-slate-900">
+      <legend id="mood-legend" className="text-sm font-semibold text-slate-900">
+        <span className="mb-3 flex items-center gap-2">
+          <span
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-calm-100 text-base"
+            aria-hidden="true"
+          >
+            💭
+          </span>
           How are you feeling right now?
-        </legend>
-      </div>
+        </span>
+      </legend>
       <p className="mb-4 text-sm text-slate-600">
         Select a mood from 1 (very low) to 10 (excellent).
       </p>

@@ -5,7 +5,7 @@ GenAI-powered mental wellness companion for students preparing for **NEET, JEE, 
 ## Local setup
 
 1. **Install:** `npm install`
-2. **Configure:** Copy `.env.example` to `.env` and set `VITE_GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/apikey)
+2. **Configure:** Copy `.env.example` to `.env` and set `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/apikey)
 3. **Run:** `npm run dev`
 
 ## Deploy to Vercel
@@ -32,7 +32,7 @@ GenAI-powered mental wellness companion for students preparing for **NEET, JEE, 
    - Add:
      | Name | Value |
      |------|-------|
-     | `VITE_GEMINI_API_KEY` | Your Gemini API key |
+     | `GEMINI_API_KEY` | Your Gemini API key (server-side only) |
    - Enable for **Production**, **Preview**, and **Development**
 
 4. **Deploy**
@@ -41,16 +41,17 @@ GenAI-powered mental wellness companion for students preparing for **NEET, JEE, 
 
 5. **Secure your API key** (after deploy)
    - In [Google AI Studio](https://aistudio.google.com/apikey), restrict the key to your Vercel domain (e.g. `https://your-project.vercel.app/*`)
+   - The key is stored server-side via `/api/gemini` — it is never bundled into the client
 
 6. **Redeploy after env changes**
-   - If you add or change `VITE_GEMINI_API_KEY`, go to **Deployments** → **Redeploy** (Vite embeds env vars at build time)
+   - If you add or change `GEMINI_API_KEY`, go to **Deployments** → **Redeploy**
 
 ### Option B — Vercel CLI
 
 1. Install CLI: `npm i -g vercel`
 2. From the project folder: `vercel login`
 3. Link project: `vercel link`
-4. Add env var: `vercel env add VITE_GEMINI_API_KEY`
+4. Add env var: `vercel env add GEMINI_API_KEY`
 5. Deploy: `vercel --prod`
 
 ## Scripts
@@ -67,24 +68,30 @@ GenAI-powered mental wellness companion for students preparing for **NEET, JEE, 
 
 ```
 App (useReducer state)
-├── JournalEntry      — daily text + sanitisation
-├── MoodSelector      — 1–10 emoji scale
-├── AIInsights        — parsed Gemini response sections
-├── HistoryView       — entries + SVG mood sparkline
-└── useGemini()       — API calls, loading, errors
+├── /api/gemini         — server proxy (API key stays server-side)
+├── JournalEntry        — daily text + sanitisation
+├── MoodSelector        — 1–10 emoji scale
+├── AIInsights          — parsed Gemini response sections
+├── HistoryView         — entries + SVG mood sparkline (lazy-loaded)
+└── useGemini()         — proxy calls, loading, errors, rate limiting
 ```
 
 ## Security
 
-- API key loaded from `VITE_GEMINI_API_KEY` only (never hardcoded)
-- User input sanitised (HTML/script stripped, 2000 char limit) before API calls
-- Submit disabled while a Gemini request is in-flight
-- Restrict your API key by domain in Google AI Studio after deploying
+- Gemini API key stored as `GEMINI_API_KEY` on the server only — never sent to the browser
+- Client calls `/api/gemini` proxy with validated, sanitised payloads
+- Server-side rate limiting (15 requests/minute per IP)
+- Client-side cooldown between submissions (2 seconds)
+- Security headers: CSP, X-Frame-Options, nosniff, Permissions-Policy
+- User input sanitised (HTML/script/event handlers stripped, 2000 char limit)
+- Submit disabled while a request is in-flight
 
 ## Accessibility
 
-- Semantic landmarks: `header`, `main`, `footer`
-- Skip link, ARIA labels, `aria-pressed` mood buttons, keyboard arrow navigation
+- Semantic landmarks: `header`, `main`, `footer`, `nav`, `aside`
+- Skip link, focus management on page navigation, mobile menu focus trap
+- ARIA labels, `aria-pressed` mood buttons, keyboard arrow navigation
+- Step progress labels (Step 1–4 of 4) for screen readers
 - WCAG AA colour contrast via Tailwind palette
 - `prefers-reduced-motion` support
 

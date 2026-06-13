@@ -35,7 +35,14 @@ function stripControlChars(text) {
 export function sanitiseInput(text) {
   if (typeof text !== 'string') return '';
 
-  return stripControlChars(text.replace(/<[^>]*>/g, '').replace(/javascript:/gi, ''))
+  return stripControlChars(
+    text
+      .replace(/<[^>]*>/g, '')
+      .replace(/javascript:/gi, '')
+      .replace(/vbscript:/gi, '')
+      .replace(/data:\s*text\/html/gi, '')
+      .replace(/\bon\w+\s*=/gi, '')
+  )
     .trim()
     .slice(0, MAX_JOURNAL_LENGTH);
 }
