@@ -8,15 +8,16 @@ import { SECTION_HEADINGS } from '../constants';
 export default function MindfulnessCard({ content, loading = false }) {
   if (loading) {
     return (
-      <section
-        aria-labelledby="mindfulness-heading"
-        aria-busy="true"
-        className="rounded-2xl border border-calm-100 bg-calm-50 p-6 shadow-sm"
-      >
-        <h2 id="mindfulness-heading" className="text-lg font-semibold text-slate-900">
-          {SECTION_HEADINGS.mindfulness}
-        </h2>
-        <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-calm-100 motion-reduce:animate-none" />
+      <section aria-labelledby="mindfulness-heading" aria-busy="true" className="surface-card">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 animate-pulse items-center justify-center rounded-full bg-calm-100 motion-reduce:animate-none" aria-hidden="true">
+            🧘
+          </span>
+          <h2 id="mindfulness-heading" className="section-title">
+            {SECTION_HEADINGS.mindfulness}
+          </h2>
+        </div>
+        <div className="mt-4 h-20 animate-pulse rounded-xl bg-calm-50 motion-reduce:animate-none" />
       </section>
     );
   }
@@ -25,14 +26,24 @@ export default function MindfulnessCard({ content, loading = false }) {
     return (
       <section
         aria-labelledby="mindfulness-heading"
-        className="rounded-2xl border border-dashed border-calm-200 bg-calm-50/50 p-6"
+        className="surface-card border-dashed border-calm-200 bg-gradient-to-br from-calm-50/40 to-white"
       >
-        <h2 id="mindfulness-heading" className="text-lg font-semibold text-slate-800">
-          {SECTION_HEADINGS.mindfulness}
-        </h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Complete a check-in to receive a breathing or focus exercise matched to your stress level.
-        </p>
+        <div className="flex items-start gap-4">
+          <span
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-calm-100 text-2xl"
+            aria-hidden="true"
+          >
+            🧘
+          </span>
+          <div>
+            <h2 id="mindfulness-heading" className="section-title">
+              {SECTION_HEADINGS.mindfulness}
+            </h2>
+            <p className="mt-2 section-subtitle">
+              Complete a check-in to receive a breathing or focus exercise matched to your stress level.
+            </p>
+          </div>
+        </div>
       </section>
     );
   }
@@ -40,13 +51,24 @@ export default function MindfulnessCard({ content, loading = false }) {
   return (
     <section
       aria-labelledby="mindfulness-heading"
-      className="rounded-2xl border border-calm-200 bg-calm-50 p-6 shadow-sm"
+      className="surface-card overflow-hidden border-calm-200 bg-gradient-to-br from-calm-50 via-white to-wellness-50/30"
     >
-      <h2 id="mindfulness-heading" className="text-lg font-semibold text-slate-900">
-        {SECTION_HEADINGS.mindfulness}
-      </h2>
-      <div aria-live="polite" className="mt-3 rounded-xl border-l-4 border-l-calm-600 bg-white p-4">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{content}</p>
+      <div className="flex items-start gap-4">
+        <span
+          className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-calm-500 to-wellness-600 text-2xl shadow-md"
+          aria-hidden="true"
+        >
+          <span className="absolute inset-0 animate-ping rounded-2xl bg-calm-400/20 motion-reduce:animate-none" />
+          🧘
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 id="mindfulness-heading" className="section-title">
+            {SECTION_HEADINGS.mindfulness}
+          </h2>
+          <div aria-live="polite" className="mt-4 rounded-xl border border-calm-100 bg-white/90 p-4 shadow-sm">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{content}</p>
+          </div>
+        </div>
       </div>
     </section>
   );

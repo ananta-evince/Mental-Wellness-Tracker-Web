@@ -22,8 +22,7 @@ describe('HistoryView', () => {
     );
 
     render(<HistoryView entries={entries} />);
-    expect(screen.getByRole('img', { name: /mood trend sparkline/i })).toBeInTheDocument();
-    expect(screen.getByText(/last 7 entries/i)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /last 7 entries/i })).toBeInTheDocument();
   });
 });
 

@@ -3,8 +3,46 @@
 @import 'tailwindcss/utilities';
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply relative min-h-screen overflow-x-hidden bg-slate-50 bg-mesh-gradient;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-white/80 bg-white/90 p-6 shadow-card backdrop-blur-sm sm:p-8;
+  }
+
+  .section-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-wellness-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-wellness-800;
+  }
+
+  .section-title {
+    @apply text-xl font-bold tracking-tight text-slate-900 sm:text-2xl;
+  }
+
+  .section-subtitle {
+    @apply mt-1 max-w-2xl text-sm leading-relaxed text-slate-600;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-wellness-600 to-wellness-700 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-wellness-700 hover:to-wellness-800 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-wellness-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:shadow-none;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-wellness-400 focus:outline-none focus:ring-2 focus:ring-wellness-100 disabled:cursor-not-allowed disabled:bg-slate-100;
+  }
+
+  .insight-panel {
+    @apply rounded-xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-sm;
   }
 }
 
@@ -24,6 +62,10 @@
   .skip-link {
     @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-wellness-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:outline-none focus:ring-2 focus:ring-wellness-500;
   }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-wellness-700 to-calm-600 bg-clip-text text-transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -33,5 +75,9 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }

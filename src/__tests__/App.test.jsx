@@ -43,7 +43,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByLabelText('JEE'));
+    await user.click(screen.getByRole('radio', { name: 'JEE' }));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'Mock test anxiety today' },
     });

@@ -47,6 +47,7 @@ export default function HistoryView({ entries }) {
   );
 
   const sparklinePoints = useMemo(() => buildSparklinePoints(lastSevenMoods), [lastSevenMoods]);
+  const sparklineArea = sparklinePoints ? `${sparklinePoints} 100,32 0,32` : '';
 
   const avgMood = useMemo(() => {
     if (lastSevenMoods.length === 0) return null;
@@ -54,42 +55,51 @@ export default function HistoryView({ entries }) {
   }, [lastSevenMoods]);
 
   return (
-    <section aria-labelledby="history-heading" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <section aria-labelledby="history-heading" className="surface-card">
+      <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
-          <h2 id="history-heading" className="text-lg font-semibold text-slate-900">
+          <span className="section-badge">History</span>
+          <h2 id="history-heading" className="mt-2 section-title">
             Your journey so far
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="section-subtitle">
             {entries.length === 0
               ? 'Your entries will appear here after your first check-in.'
               : `${entries.length} check-in${entries.length === 1 ? '' : 's'} recorded`}
           </p>
         </div>
+
         {lastSevenMoods.length >= 2 && (
-          <div className="min-w-[160px] rounded-xl bg-slate-50 px-3 py-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Mood trend (last {Math.min(lastSevenMoods.length, SPARKLINE_WINDOW)} entries)
+          <div className="min-w-[200px] rounded-2xl border border-wellness-100 bg-gradient-to-br from-wellness-50 to-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-wellness-700">
+              Mood trend · last {Math.min(lastSevenMoods.length, SPARKLINE_WINDOW)}
             </p>
             <svg
               viewBox="0 0 100 32"
-              className="mt-1 h-10 w-full"
+              className="mt-2 h-12 w-full"
               role="img"
               aria-label={`Mood trend sparkline for last ${lastSevenMoods.length} entries`}
             >
+              <defs>
+                <linearGradient id="sparkline-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#14b8a6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {sparklineArea && <polygon fill="url(#sparkline-fill)" points={sparklineArea} />}
               <polyline
                 fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+                stroke="#0d9488"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-wellness-600"
                 points={sparklinePoints}
               />
             </svg>
             {avgMood && (
-              <p className="text-xs text-slate-600">
-                Average: <span className="font-semibold text-wellness-800">{avgMood}/10</span>
+              <p className="mt-1 text-xs text-slate-600">
+                7-day avg:{' '}
+                <span className="font-bold text-wellness-800">{avgMood}/10</span>
               </p>
             )}
           </div>
@@ -97,25 +107,29 @@ export default function HistoryView({ entries }) {
       </div>
 
       <div
-        className="mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-1"
+        className="mt-6 max-h-[440px] space-y-3 overflow-y-auto pr-1"
         role="list"
         aria-label="Past journal entries"
       >
         {sortedEntries.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            No entries yet — your first reflection is just a few taps away.
-          </p>
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
+            <span className="text-3xl" aria-hidden="true">
+              📔
+            </span>
+            <p className="mt-3 text-sm font-medium text-slate-700">No entries yet</p>
+            <p className="mt-1 text-xs text-slate-500">Your first reflection is just a few taps away.</p>
+          </div>
         ) : (
           sortedEntries.map((entry) => (
             <article
               key={entry.id}
               role="listitem"
-              className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-wellness-200 hover:bg-wellness-50/50"
+              className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-wellness-200 hover:shadow-card"
             >
               <header className="flex flex-wrap items-center justify-between gap-2">
-                <div>
+                <div className="flex flex-wrap items-center gap-2">
                   {entry.exam && (
-                    <span className="mr-2 text-xs font-semibold uppercase text-wellness-700">
+                    <span className="rounded-full bg-wellness-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-wellness-800">
                       {entry.exam}
                     </span>
                   )}
@@ -130,17 +144,17 @@ export default function HistoryView({ entries }) {
                   </time>
                 </div>
                 <span
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-wellness-800 ring-1 ring-wellness-200"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-wellness-50 to-calm-50 px-3 py-1 text-xs font-bold text-wellness-900 ring-1 ring-wellness-100"
                   aria-label={`Mood ${entry.mood} out of 10`}
                 >
                   <span aria-hidden="true">{MOOD_EMOJIS[entry.mood]}</span>
                   {entry.mood}/10
                 </span>
               </header>
-              <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-800">{entry.journalText}</p>
+              <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-700">{entry.journalText}</p>
               {entry.sections?.copingStrategies && (
-                <p className="mt-2 text-xs text-slate-600">
-                  <span className="font-semibold text-emerald-800">{SECTION_HEADINGS.coping}: </span>
+                <p className="mt-3 rounded-lg bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900">
+                  <span className="font-semibold">{SECTION_HEADINGS.coping}: </span>
                   {entry.sections.copingStrategies.slice(0, 100)}
                   {entry.sections.copingStrategies.length > 100 ? '…' : ''}
                 </p>

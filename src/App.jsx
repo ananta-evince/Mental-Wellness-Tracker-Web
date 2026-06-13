@@ -4,6 +4,7 @@ import ExamSelector from './components/ExamSelector';
 import JournalEntry from './components/JournalEntry';
 import MindfulnessCard from './components/MindfulnessCard';
 import MoodSelector from './components/MoodSelector';
+import { EXAM_META } from './constants';
 import { useGemini } from './hooks/useGemini';
 import { sanitiseInput } from './utils/sanitize';
 
@@ -63,6 +64,7 @@ function journalReducer(state, action) {
 export default function App() {
   const [state, dispatch] = useReducer(journalReducer, INITIAL_STATE);
   const { data, loading, error, call } = useGemini();
+  const examMeta = EXAM_META[state.selectedExam];
 
   const handleSubmit = useCallback(
     async (event) => {
@@ -120,52 +122,85 @@ export default function App() {
   const mindfulnessContent = sections?.mindfulnessExercise ?? null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-wellness-50 via-slate-50 to-calm-50">
-      <nav aria-label="Primary" className="border-b border-wellness-200 bg-white/80 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+    <div className="page-shell">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-24 top-20 h-72 w-72 rounded-full bg-wellness-200/30 blur-3xl" />
+        <div className="absolute -right-16 top-40 h-64 w-64 rounded-full bg-calm-200/25 blur-3xl" />
+      </div>
+
+      <nav
+        aria-label="Primary"
+        className="sticky top-0 z-40 border-b border-white/60 bg-white/85 shadow-nav backdrop-blur-md"
+      >
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <a href="#main-heading" className="skip-link">
             Skip to main content
           </a>
           <div className="flex items-center gap-3">
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-wellness-100 text-xl"
-              aria-hidden="true"
-            >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-wellness-500 to-wellness-700 text-lg shadow-sm">
               🌿
             </span>
-            <span className="text-lg font-bold text-wellness-900">Wellness Tracker</span>
+            <div>
+              <p className="text-sm font-bold text-slate-900">Wellness Tracker</p>
+              <p className="text-[11px] text-slate-500">AI companion for exam prep</p>
+            </div>
           </div>
-          <span className="rounded-full bg-wellness-100 px-3 py-1 text-xs font-semibold text-wellness-800">
-            {state.selectedExam}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden text-xs text-slate-500 sm:inline">Preparing for</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-wellness-100 px-3 py-1.5 text-xs font-bold text-wellness-800 ring-1 ring-wellness-200">
+              <span aria-hidden="true">{examMeta.emoji}</span>
+              {state.selectedExam}
+            </span>
+          </div>
         </div>
       </nav>
 
-      <header className="border-b border-wellness-100 bg-white/60" aria-labelledby="app-title">
-        <div className="mx-auto max-w-3xl px-4 py-5 sm:px-6">
-          <h1 id="app-title" className="text-xl font-bold tracking-tight text-wellness-900 sm:text-2xl">
-            Mental Wellness Tracker
+      <header className="relative border-b border-wellness-100/60" aria-labelledby="app-title">
+        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+          <span className="section-badge">Built for Indian students</span>
+          <h1 id="app-title" className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
+            Mental Wellness{' '}
+            <span className="text-gradient">Tracker</span>
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            A gentle, AI-powered space for students under exam pressure — you&apos;re doing harder things than you think.
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">
+            A gentle, AI-powered space for students under exam pressure. Journal your thoughts, track your mood,
+            and receive personalised wellness support tailored to your {state.selectedExam} journey.
           </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {['Daily journaling', 'Mood tracking', 'AI insights', 'Mindfulness'].map((pill) => (
+              <span
+                key={pill}
+                className="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 shadow-sm"
+              >
+                {pill}
+              </span>
+            ))}
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6" aria-labelledby="main-heading">
+      <main className="relative mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8" aria-labelledby="main-heading">
         <h2 id="main-heading" className="sr-only">
           Daily wellness check-in
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-8" noValidate aria-label="Daily wellness check-in form">
-          <section
-            aria-labelledby="onboarding-heading"
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <h3 id="onboarding-heading" className="text-lg font-semibold text-slate-900">
-              Your exam journey
-            </h3>
-            <div className="mt-5">
+          <section aria-labelledby="onboarding-heading" className="surface-card">
+            <div className="flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-wellness-600 text-sm font-bold text-white">
+                1
+              </span>
+              <div>
+                <span className="section-badge">Onboarding</span>
+                <h3 id="onboarding-heading" className="mt-2 section-title">
+                  Your exam journey
+                </h3>
+                <p className="section-subtitle">
+                  Which high-stakes exam are you preparing for? We&apos;ll tailor every insight to your path.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6">
               <ExamSelector
                 selectedExam={state.selectedExam}
                 onSelect={(exam) => dispatch({ type: 'SET_EXAM', payload: { exam } })}
@@ -174,14 +209,22 @@ export default function App() {
             </div>
           </section>
 
-          <section
-            aria-labelledby="checkin-heading"
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <h3 id="checkin-heading" className="text-lg font-semibold text-slate-900">
-              Today&apos;s check-in
-            </h3>
-            <div className="mt-5 space-y-6">
+          <section aria-labelledby="checkin-heading" className="surface-card">
+            <div className="flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-wellness-600 text-sm font-bold text-white">
+                2
+              </span>
+              <div>
+                <span className="section-badge">Daily check-in</span>
+                <h3 id="checkin-heading" className="mt-2 section-title">
+                  Today&apos;s check-in
+                </h3>
+                <p className="section-subtitle">
+                  Share how preparation feels today — no judgment, just honest reflection.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 space-y-6">
               <JournalEntry
                 value={state.journalText}
                 onChange={(text) => dispatch({ type: 'SET_JOURNAL', payload: { text } })}
@@ -195,13 +238,16 @@ export default function App() {
                 validationError={state.moodError}
               />
             </div>
-            <div className="mt-6">
+            <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">
+                Powered by Gemini AI · Your data stays in this session only
+              </p>
               <button
                 type="submit"
                 disabled={loading}
                 aria-label="Submit journal entry for AI wellness analysis"
                 aria-busy={loading}
-                className="inline-flex items-center gap-2 rounded-xl bg-wellness-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-wellness-700 focus:outline-none focus:ring-2 focus:ring-wellness-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400"
+                className="btn-primary w-full sm:w-auto"
               >
                 {loading ? (
                   <>
@@ -209,24 +255,38 @@ export default function App() {
                       className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none"
                       aria-hidden="true"
                     />
-                    Analyzing…
+                    Analyzing your entry…
                   </>
                 ) : (
-                  'Get wellness insights'
+                  <>✨ Get wellness insights</>
                 )}
               </button>
             </div>
           </section>
         </form>
 
-        <div className="mt-8 space-y-8">
+        <div className="mt-12 space-y-8">
+          <div className="flex items-start gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-calm-600 text-sm font-bold text-white">
+              3
+            </span>
+            <div>
+              <span className="section-badge">AI insights</span>
+              <h3 className="mt-2 section-title">Your personalised support</h3>
+              <p className="section-subtitle">
+                Stress detection, coping strategies, and mindfulness — all matched to your mood and {state.selectedExam} prep.
+              </p>
+            </div>
+          </div>
+
           <AIInsights sections={sections} loading={loading} error={error} />
           <MindfulnessCard content={mindfulnessContent} loading={loading} />
+
           <Suspense
             fallback={
-              <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-                Loading history…
-              </p>
+              <div className="surface-card animate-pulse motion-reduce:animate-none">
+                <p className="text-sm text-slate-500">Loading history…</p>
+              </div>
             }
           >
             <HistoryView entries={state.entries} />
@@ -235,13 +295,16 @@ export default function App() {
       </main>
 
       <footer
-        className="mt-12 border-t border-slate-200 bg-white/60 py-6 text-center text-xs text-slate-500"
+        className="relative mt-16 border-t border-slate-200/80 bg-white/70 py-10 backdrop-blur-sm"
         aria-labelledby="footer-note"
       >
-        <p id="footer-note">
-          This app supports reflection — it is not a substitute for professional mental health care.
-          If you&apos;re in crisis, please reach out to a trusted adult or helpline.
-        </p>
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+          <p className="text-sm font-semibold text-slate-800">You matter beyond any score.</p>
+          <p id="footer-note" className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-slate-500">
+            This app supports reflection — it is not a substitute for professional mental health care.
+            If you&apos;re in crisis, please reach out to a trusted adult or helpline.
+          </p>
+        </div>
       </footer>
     </div>
   );

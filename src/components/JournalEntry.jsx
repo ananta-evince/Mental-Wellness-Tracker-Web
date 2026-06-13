@@ -19,16 +19,23 @@ export default function JournalEntry({ value, onChange, disabled = false, valida
     : 'journal-hint journal-char-count';
 
   const handleChange = (event) => {
-    const next = sanitiseInput(event.target.value);
-    onChange(next);
+    onChange(sanitiseInput(event.target.value));
   };
 
   return (
-    <div className="space-y-2">
-      <label id="journal-label" htmlFor="journal-entry" className="block text-sm font-semibold text-slate-800">
-        Today&apos;s journal
-      </label>
-      <p id="journal-hint" className="text-sm text-slate-600">
+    <div className="rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <span
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-wellness-100 text-base"
+          aria-hidden="true"
+        >
+          ✍️
+        </span>
+        <label id="journal-label" htmlFor="journal-entry" className="text-sm font-semibold text-slate-900">
+          Today&apos;s journal
+        </label>
+      </div>
+      <p id="journal-hint" className="mb-3 text-sm leading-relaxed text-slate-600">
         Write freely about your day, worries, wins, or anything on your mind before the exam.
       </p>
       <textarea
@@ -36,17 +43,17 @@ export default function JournalEntry({ value, onChange, disabled = false, valida
         aria-labelledby="journal-label"
         aria-describedby={describedBy}
         aria-invalid={validationError ? 'true' : 'false'}
-        className="min-h-[160px] w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm transition focus:border-wellness-500 focus:outline-none focus:ring-2 focus:ring-wellness-200 disabled:cursor-not-allowed disabled:bg-slate-100"
+        className="input-field min-h-[180px] resize-y leading-relaxed"
         placeholder="How are you feeling about your preparation today?"
         value={value}
         onChange={handleChange}
         disabled={disabled}
         maxLength={MAX_JOURNAL_LENGTH}
       />
-      <div className="flex items-start justify-between gap-2">
+      <div className="mt-2 flex items-start justify-between gap-2">
         <span
           id="journal-char-count"
-          className={`text-xs ${isNearLimit ? 'font-medium text-amber-700' : 'text-slate-500'}`}
+          className={`text-xs ${isNearLimit ? 'font-semibold text-amber-700' : 'text-slate-500'}`}
         >
           {charCount} / {MAX_JOURNAL_LENGTH} characters
         </span>

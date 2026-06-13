@@ -8,6 +8,15 @@ export const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/
 
 export const EXAMS = ['NEET', 'JEE', 'CUET', 'CAT', 'GATE', 'UPSC'];
 
+export const EXAM_META = {
+  NEET: { tagline: 'Medical entrance', emoji: '🩺' },
+  JEE: { tagline: 'Engineering prep', emoji: '⚙️' },
+  CUET: { tagline: 'University admissions', emoji: '🎓' },
+  CAT: { tagline: 'MBA pathway', emoji: '📊' },
+  GATE: { tagline: 'Post-grad tech', emoji: '🔬' },
+  UPSC: { tagline: 'Civil services', emoji: '🏛️' },
+};
+
 export const SECTION_HEADINGS = {
   stress: 'Stress trigger detection',
   coping: 'Personalised coping strategies',
