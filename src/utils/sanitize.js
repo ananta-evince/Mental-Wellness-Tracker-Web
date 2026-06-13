@@ -20,35 +20,20 @@ const SECTION_PATTERNS = [
 ];
 
 /**
- * Strips HTML tags and trims whitespace from user input.
- * @param {string} text - Raw user text
- * @returns {string} Sanitised plain text
+ * Strips HTML tags and truncates journal text before API calls.
+ * @param {string} text
+ * @returns {string}
  */
-export function sanitizeText(text) {
+export function sanitiseInput(text) {
   if (typeof text !== 'string') return '';
-
-  const withoutScripts = text
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
-
-  const withoutTags = withoutScripts.replace(/<[^>]*>/g, '');
-
-  const decoded = withoutTags
-    .replace(/&lt;/gi, '')
-    .replace(/&gt;/gi, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/javascript:/gi, '');
-
-  return decoded.replace(/<[^>]*>/g, '').trim().slice(0, MAX_JOURNAL_LENGTH);
+  return text.replace(/<[^>]*>/g, '').trim().slice(0, MAX_JOURNAL_LENGTH);
 }
 
-/**
- * Extracts section body from a markdown-style header line.
- * @param {string} line
- * @returns {{ key: string, body: string } | null}
- */
+/** @deprecated Alias for sanitiseInput */
+export function sanitizeText(text) {
+  return sanitiseInput(text);
+}
+
 function matchSectionHeader(line) {
   const cleaned = line.replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, '').trim();
 
@@ -63,8 +48,7 @@ function matchSectionHeader(line) {
 
 /**
  * Parses Gemini response into labelled sections for display.
- * @param {string} rawText - Full Gemini response
- * @returns {{ stressAnalysis: string, copingStrategies: string, mindfulnessExercise: string, motivationalMessage: string }}
+ * @param {string} rawText
  */
 export function parseGeminiResponse(rawText) {
   const fallback =
@@ -87,10 +71,6 @@ export function parseGeminiResponse(rawText) {
   });
 }
 
-/**
- * Parses markdown-header structured Gemini responses.
- * @param {string} fallback
- */
 function parseGeminiResponseFromHeaders(fallback) {
   const lines = fallback.split('\n');
   let currentKey = null;
@@ -117,9 +97,7 @@ function parseGeminiResponseFromHeaders(fallback) {
 
     if (headerMatch) {
       currentKey = headerMatch.key;
-      if (headerMatch.body) {
-        buffers[currentKey].push(headerMatch.body);
-      }
+      if (headerMatch.body) buffers[currentKey].push(headerMatch.body);
       continue;
     }
 
@@ -129,27 +107,17 @@ function parseGeminiResponseFromHeaders(fallback) {
       continue;
     }
 
-    if (currentKey) {
-      buffers[currentKey].push(trimmed);
-    } else {
-      buffers.stressAnalysis.push(trimmed);
-    }
+    if (currentKey) buffers[currentKey].push(trimmed);
+    else buffers.stressAnalysis.push(trimmed);
   }
 
   for (const key of Object.keys(sections)) {
-    if (buffers[key].length > 0) {
-      sections[key] = buffers[key].join('\n').trim();
-    }
+    if (buffers[key].length > 0) sections[key] = buffers[key].join('\n').trim();
   }
 
   return sections;
 }
 
-/**
- * Fallback paragraph-based parser when markdown headers are absent.
- * @param {string} fallback
- * @param {object} sections
- */
 function parseGeminiResponseByParagraphs(fallback, sections) {
   const paragraphs = fallback.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
 
@@ -183,9 +151,7 @@ function parseGeminiResponseByParagraphs(fallback, sections) {
     (p, i) =>
       i !== copingIdx &&
       i !== mindfulnessIdx &&
-      /you've got|you have got|keep going|believe|proud|remember|you can|you're not alone|rooting|got this/i.test(
-        p
-      )
+      /you've got|you have got|keep going|believe|proud|remember|you can|you're not alone|rooting|got this/i.test(p)
   );
 
   if (copingIdx === -1 && mindfulnessIdx === -1) {
@@ -199,16 +165,10 @@ function parseGeminiResponseByParagraphs(fallback, sections) {
   );
 
   sections.stressAnalysis = paragraphs.slice(0, firstSpecial).join('\n\n');
-
   if (copingIdx >= 0) sections.copingStrategies = paragraphs[copingIdx];
   if (mindfulnessIdx >= 0) sections.mindfulnessExercise = paragraphs[mindfulnessIdx];
-
-  if (motivationIdx >= 0) {
-    sections.motivationalMessage = paragraphs[motivationIdx];
-  } else {
-    sections.motivationalMessage = paragraphs[paragraphs.length - 1];
-  }
-
+  sections.motivationalMessage =
+    motivationIdx >= 0 ? paragraphs[motivationIdx] : paragraphs[paragraphs.length - 1];
   if (!sections.stressAnalysis) sections.stressAnalysis = paragraphs[0];
 
   return sections;

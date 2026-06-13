@@ -1,41 +1,38 @@
 import { useCallback, useRef, useState } from 'react';
-import { GEMINI_API_URL, REQUEST_TIMEOUT_MS, SYSTEM_PROMPT } from '../constants';
-import { parseGeminiResponse, sanitizeText } from '../utils/sanitize';
+import { buildSystemPrompt, GEMINI_API_URL, REQUEST_TIMEOUT_MS } from '../constants';
+import { parseGeminiResponse, sanitiseInput } from '../utils/sanitize';
 import { isValidMoodScore } from '../utils/validation';
 
 /**
- * Custom hook encapsulating Gemini API calls, loading, and error state.
- * @returns {{
- *   analyzeEntry: (moodScore: number, journalText: string) => Promise<object | null>,
- *   loading: boolean,
- *   error: string | null,
- *   clearError: () => void
- * }}
+ * Encapsulates all Gemini API calls. Exposes only { data, loading, error, call }.
+ * @returns {{ data: object | null, loading: boolean, error: string | null, call: Function }}
  */
 export function useGemini() {
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
 
-  const clearError = useCallback(() => setError(null), []);
-
-  const analyzeEntry = useCallback(async (moodScore, journalText) => {
+  const call = useCallback(async ({ moodScore, journalText, exam }) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
     if (!apiKey || apiKey === 'your_key_here') {
       setError('API key missing. Add VITE_GEMINI_API_KEY to your .env file.');
+      setData(null);
       return null;
     }
 
     if (!isValidMoodScore(moodScore)) {
       setError('Please select a valid mood between 1 and 10.');
+      setData(null);
       return null;
     }
 
-    const sanitisedText = sanitizeText(journalText);
+    const sanitisedText = sanitiseInput(journalText);
 
     if (!sanitisedText) {
       setError('Please write something in your journal before submitting.');
+      setData(null);
       return null;
     }
 
@@ -46,9 +43,11 @@ export function useGemini() {
 
     setLoading(true);
     setError(null);
+    setData(null);
 
     try {
-      const userMessage = `Mood score: ${moodScore}/10. Journal entry: ${sanitisedText}`;
+      const systemPrompt = buildSystemPrompt(exam);
+      const userMessage = `Exam: ${exam}. Mood score: ${moodScore}/10. Journal entry: ${sanitisedText}`;
 
       const response = await fetch(GEMINI_API_URL, {
         method: 'POST',
@@ -58,15 +57,8 @@ export function useGemini() {
           'X-goog-api-key': apiKey,
         },
         body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: SYSTEM_PROMPT }],
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: userMessage }],
-            },
-          ],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         }),
       });
 
@@ -78,28 +70,31 @@ export function useGemini() {
         throw new Error(statusHint);
       }
 
-      const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+      const responseData = await response.json();
+      const rawText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
 
       if (!rawText) {
         throw new Error('We received an empty response. Please try again.');
       }
 
-      return {
+      const result = {
         rawText,
         sections: parseGeminiResponse(rawText),
       };
+
+      setData(result);
+      return result;
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         setError('The request took too long. Please check your connection and try again.');
-        return null;
+      } else {
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : 'Something went wrong while analyzing your entry. Please try again.'
+        );
       }
-
-      const message =
-        err instanceof Error && err.message
-          ? err.message
-          : 'Something went wrong while analyzing your entry. Please try again.';
-      setError(message);
+      setData(null);
       return null;
     } finally {
       clearTimeout(timeoutId);
@@ -107,5 +102,5 @@ export function useGemini() {
     }
   }, []);
 
-  return { analyzeEntry, loading, error, clearError };
+  return { data, loading, error, call };
 }

@@ -1,6 +1,7 @@
 import { Component } from 'react';
 
 /**
+ * @component
  * Catches render errors and shows a recoverable fallback UI.
  */
 export default class ErrorBoundary extends Component {

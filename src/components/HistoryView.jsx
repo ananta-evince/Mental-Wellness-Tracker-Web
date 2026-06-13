@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
-import { MOOD_EMOJIS } from '../constants';
+import { MOOD_EMOJIS, SECTION_HEADINGS } from '../constants';
+
+const SPARKLINE_WINDOW = 7;
 
 /**
  * Builds SVG polyline points for a mood sparkline.
- * @param {number[]} moods - Mood scores in chronological order
+ * @param {number[]} moods
  * @returns {string}
  */
 export function buildSparklinePoints(moods) {
@@ -20,9 +22,10 @@ export function buildSparklinePoints(moods) {
 }
 
 /**
- * Scrollable history of past entries with mood trend sparkline.
+ * @component
+ * Scrollable history of past entries with last-7 mood trend sparkline.
  * @param {{
- *   entries: Array<{ id: string, timestamp: string, journalText: string, mood: number, sections?: object }>
+ *   entries: Array<{ id: string, timestamp: string, journalText: string, mood: number, exam?: string, sections?: object }>
  * }} props
  */
 export default function HistoryView({ entries }) {
@@ -34,25 +37,21 @@ export default function HistoryView({ entries }) {
     [entries]
   );
 
-  const chronologicalMoods = useMemo(
+  const lastSevenMoods = useMemo(
     () =>
       [...entries]
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        .slice(-SPARKLINE_WINDOW)
         .map((e) => e.mood),
     [entries]
   );
 
-  const sparklinePoints = useMemo(
-    () => buildSparklinePoints(chronologicalMoods),
-    [chronologicalMoods]
-  );
+  const sparklinePoints = useMemo(() => buildSparklinePoints(lastSevenMoods), [lastSevenMoods]);
 
   const avgMood = useMemo(() => {
-    if (chronologicalMoods.length === 0) return null;
-    return (
-      chronologicalMoods.reduce((sum, m) => sum + m, 0) / chronologicalMoods.length
-    ).toFixed(1);
-  }, [chronologicalMoods]);
+    if (lastSevenMoods.length === 0) return null;
+    return (lastSevenMoods.reduce((sum, m) => sum + m, 0) / lastSevenMoods.length).toFixed(1);
+  }, [lastSevenMoods]);
 
   return (
     <section aria-labelledby="history-heading" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -67,14 +66,16 @@ export default function HistoryView({ entries }) {
               : `${entries.length} check-in${entries.length === 1 ? '' : 's'} recorded`}
           </p>
         </div>
-        {chronologicalMoods.length >= 2 && (
-          <div className="min-w-[140px] rounded-xl bg-slate-50 px-3 py-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Mood trend</p>
+        {lastSevenMoods.length >= 2 && (
+          <div className="min-w-[160px] rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Mood trend (last {Math.min(lastSevenMoods.length, SPARKLINE_WINDOW)} entries)
+            </p>
             <svg
               viewBox="0 0 100 32"
               className="mt-1 h-10 w-full"
               role="img"
-              aria-label={`Mood trend sparkline across ${chronologicalMoods.length} entries`}
+              aria-label={`Mood trend sparkline for last ${lastSevenMoods.length} entries`}
             >
               <polyline
                 fill="none"
@@ -88,7 +89,7 @@ export default function HistoryView({ entries }) {
             </svg>
             {avgMood && (
               <p className="text-xs text-slate-600">
-                Average mood: <span className="font-semibold text-wellness-800">{avgMood}/10</span>
+                Average: <span className="font-semibold text-wellness-800">{avgMood}/10</span>
               </p>
             )}
           </div>
@@ -112,18 +113,25 @@ export default function HistoryView({ entries }) {
               className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-wellness-200 hover:bg-wellness-50/50"
             >
               <header className="flex flex-wrap items-center justify-between gap-2">
-                <time dateTime={entry.timestamp} className="text-xs font-medium text-slate-500">
-                  {new Date(entry.timestamp).toLocaleString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </time>
+                <div>
+                  {entry.exam && (
+                    <span className="mr-2 text-xs font-semibold uppercase text-wellness-700">
+                      {entry.exam}
+                    </span>
+                  )}
+                  <time dateTime={entry.timestamp} className="text-xs font-medium text-slate-500">
+                    {new Date(entry.timestamp).toLocaleString(undefined, {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </time>
+                </div>
                 <span
                   className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-wellness-800 ring-1 ring-wellness-200"
-                  aria-label={`Mood score ${entry.mood} out of 10`}
+                  aria-label={`Mood ${entry.mood} out of 10`}
                 >
                   <span aria-hidden="true">{MOOD_EMOJIS[entry.mood]}</span>
                   {entry.mood}/10
@@ -132,15 +140,9 @@ export default function HistoryView({ entries }) {
               <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-800">{entry.journalText}</p>
               {entry.sections?.copingStrategies && (
                 <p className="mt-2 text-xs text-slate-600">
-                  <span className="font-semibold text-emerald-800">Coping tip: </span>
+                  <span className="font-semibold text-emerald-800">{SECTION_HEADINGS.coping}: </span>
                   {entry.sections.copingStrategies.slice(0, 100)}
                   {entry.sections.copingStrategies.length > 100 ? '…' : ''}
-                </p>
-              )}
-              {entry.sections?.motivationalMessage && (
-                <p className="mt-2 border-t border-slate-200 pt-2 text-xs italic text-slate-600">
-                  &ldquo;{entry.sections.motivationalMessage.slice(0, 120)}
-                  {entry.sections.motivationalMessage.length > 120 ? '…' : ''}&rdquo;
                 </p>
               )}
             </article>

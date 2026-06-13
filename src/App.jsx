@@ -1,81 +1,100 @@
-import { useCallback, useReducer, useState } from 'react';
+import { lazy, Suspense, useCallback, useReducer } from 'react';
 import AIInsights from './components/AIInsights';
-import HistoryView from './components/HistoryView';
+import ExamSelector from './components/ExamSelector';
 import JournalEntry from './components/JournalEntry';
+import MindfulnessCard from './components/MindfulnessCard';
 import MoodSelector from './components/MoodSelector';
 import { useGemini } from './hooks/useGemini';
-import { sanitizeText } from './utils/sanitize';
+import { sanitiseInput } from './utils/sanitize';
+
+const HistoryView = lazy(() => import('./components/HistoryView'));
 
 const INITIAL_STATE = {
+  selectedExam: 'NEET',
+  journalText: '',
+  selectedMood: null,
+  journalError: null,
+  moodError: null,
   entries: [],
   latestSections: null,
 };
 
 /**
- * @param {{ entries: Array, latestSections: object | null }} state
+ * @param {typeof INITIAL_STATE} state
  * @param {{ type: string, payload?: object }} action
  */
-function appReducer(state, action) {
+function journalReducer(state, action) {
   switch (action.type) {
+    case 'SET_EXAM':
+      return { ...state, selectedExam: action.payload.exam };
+    case 'SET_JOURNAL':
+      return {
+        ...state,
+        journalText: action.payload.text,
+        journalError: action.payload.text.trim() ? null : state.journalError,
+      };
+    case 'SET_MOOD':
+      return { ...state, selectedMood: action.payload.mood, moodError: null };
+    case 'SET_JOURNAL_ERROR':
+      return { ...state, journalError: action.payload.message };
+    case 'SET_MOOD_ERROR':
+      return { ...state, moodError: action.payload.message };
+    case 'CLEAR_VALIDATION':
+      return { ...state, journalError: null, moodError: null };
     case 'ADD_ENTRY':
       return {
+        ...state,
         entries: [action.payload.entry, ...state.entries],
         latestSections: action.payload.sections,
+        journalText: '',
+        selectedMood: null,
+        journalError: null,
+        moodError: null,
       };
-    case 'CLEAR_LATEST':
-      return { ...state, latestSections: null };
     default:
       return state;
   }
 }
 
 /**
- * Root application — daily journaling, mood logging, and AI wellness insights.
- * @returns {JSX.Element}
+ * @component
+ * Root application — exam onboarding, journaling, mood logging, and AI wellness insights.
  */
 export default function App() {
-  const [{ entries, latestSections }, dispatch] = useReducer(appReducer, INITIAL_STATE);
-  const [journalText, setJournalText] = useState('');
-  const [selectedMood, setSelectedMood] = useState(null);
-  const [journalError, setJournalError] = useState(null);
-  const [moodError, setMoodError] = useState(null);
-  const { analyzeEntry, loading, error, clearError } = useGemini();
-
-  const handleJournalChange = useCallback((value) => {
-    setJournalText(value);
-    if (value.trim()) setJournalError(null);
-  }, []);
-
-  const handleMoodSelect = useCallback((mood) => {
-    setSelectedMood(mood);
-    setMoodError(null);
-  }, []);
+  const [state, dispatch] = useReducer(journalReducer, INITIAL_STATE);
+  const { data, loading, error, call } = useGemini();
 
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
-      clearError();
+      dispatch({ type: 'CLEAR_VALIDATION' });
 
-      const sanitised = sanitizeText(journalText);
+      const sanitised = sanitiseInput(state.journalText);
       let hasError = false;
 
       if (!sanitised) {
-        setJournalError('Please write at least a few words before submitting.');
+        dispatch({
+          type: 'SET_JOURNAL_ERROR',
+          payload: { message: 'Please write at least a few words before submitting.' },
+        });
         hasError = true;
-      } else {
-        setJournalError(null);
       }
 
-      if (selectedMood === null) {
-        setMoodError('Please select how you are feeling on the mood scale.');
+      if (state.selectedMood === null) {
+        dispatch({
+          type: 'SET_MOOD_ERROR',
+          payload: { message: 'Please select how you are feeling on the mood scale.' },
+        });
         hasError = true;
-      } else {
-        setMoodError(null);
       }
 
       if (hasError) return;
 
-      const result = await analyzeEntry(selectedMood, sanitised);
+      const result = await call({
+        moodScore: state.selectedMood,
+        journalText: sanitised,
+        exam: state.selectedExam,
+      });
 
       if (result) {
         dispatch({
@@ -85,46 +104,51 @@ export default function App() {
               id: crypto.randomUUID(),
               timestamp: new Date().toISOString(),
               journalText: sanitised,
-              mood: selectedMood,
+              mood: state.selectedMood,
+              exam: state.selectedExam,
               sections: result.sections,
             },
             sections: result.sections,
           },
         });
-        setJournalText('');
-        setSelectedMood(null);
       }
     },
-    [journalText, selectedMood, analyzeEntry, clearError]
+    [state.journalText, state.selectedMood, state.selectedExam, call]
   );
 
-  const isSubmitDisabled = loading;
+  const sections = state.latestSections ?? data?.sections ?? null;
+  const mindfulnessContent = sections?.mindfulnessExercise ?? null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-wellness-50 via-slate-50 to-calm-50">
-      <a href="#main-heading" className="skip-link">
-        Skip to main content
-      </a>
-
-      <header
-        className="border-b border-wellness-200 bg-white/80 backdrop-blur-sm"
-        aria-labelledby="app-title"
-      >
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-5 sm:px-6">
-          <span
-            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-wellness-100 text-2xl"
-            aria-hidden="true"
-          >
-            🌿
-          </span>
-          <div>
-            <h1 id="app-title" className="text-xl font-bold tracking-tight text-wellness-900 sm:text-2xl">
-              Mental Wellness Tracker
-            </h1>
-            <p className="text-sm text-slate-600">
-              A gentle space for NEET, JEE, CUET &amp; more — you&apos;re doing harder things than you think.
-            </p>
+      <nav aria-label="Primary" className="border-b border-wellness-200 bg-white/80 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <a href="#main-heading" className="skip-link">
+            Skip to main content
+          </a>
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-wellness-100 text-xl"
+              aria-hidden="true"
+            >
+              🌿
+            </span>
+            <span className="text-lg font-bold text-wellness-900">Wellness Tracker</span>
           </div>
+          <span className="rounded-full bg-wellness-100 px-3 py-1 text-xs font-semibold text-wellness-800">
+            {state.selectedExam}
+          </span>
+        </div>
+      </nav>
+
+      <header className="border-b border-wellness-100 bg-white/60" aria-labelledby="app-title">
+        <div className="mx-auto max-w-3xl px-4 py-5 sm:px-6">
+          <h1 id="app-title" className="text-xl font-bold tracking-tight text-wellness-900 sm:text-2xl">
+            Mental Wellness Tracker
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            A gentle, AI-powered space for students under exam pressure — you&apos;re doing harder things than you think.
+          </p>
         </div>
       </header>
 
@@ -135,6 +159,22 @@ export default function App() {
 
         <form onSubmit={handleSubmit} className="space-y-8" noValidate aria-label="Daily wellness check-in form">
           <section
+            aria-labelledby="onboarding-heading"
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          >
+            <h3 id="onboarding-heading" className="text-lg font-semibold text-slate-900">
+              Your exam journey
+            </h3>
+            <div className="mt-5">
+              <ExamSelector
+                selectedExam={state.selectedExam}
+                onSelect={(exam) => dispatch({ type: 'SET_EXAM', payload: { exam } })}
+                disabled={loading}
+              />
+            </div>
+          </section>
+
+          <section
             aria-labelledby="checkin-heading"
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
           >
@@ -143,22 +183,22 @@ export default function App() {
             </h3>
             <div className="mt-5 space-y-6">
               <JournalEntry
-                value={journalText}
-                onChange={handleJournalChange}
+                value={state.journalText}
+                onChange={(text) => dispatch({ type: 'SET_JOURNAL', payload: { text } })}
                 disabled={loading}
-                validationError={journalError}
+                validationError={state.journalError}
               />
               <MoodSelector
-                selectedMood={selectedMood}
-                onSelect={handleMoodSelect}
+                selectedMood={state.selectedMood}
+                onSelect={(mood) => dispatch({ type: 'SET_MOOD', payload: { mood } })}
                 disabled={loading}
-                validationError={moodError}
+                validationError={state.moodError}
               />
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-6">
               <button
                 type="submit"
-                disabled={isSubmitDisabled}
+                disabled={loading}
                 aria-label="Submit journal entry for AI wellness analysis"
                 aria-busy={loading}
                 className="inline-flex items-center gap-2 rounded-xl bg-wellness-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-wellness-700 focus:outline-none focus:ring-2 focus:ring-wellness-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400"
@@ -169,22 +209,28 @@ export default function App() {
                       className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none"
                       aria-hidden="true"
                     />
-                    <span aria-live="polite">Analyzing…</span>
+                    Analyzing…
                   </>
                 ) : (
                   'Get wellness insights'
                 )}
               </button>
-              {!loading && !journalText.trim() && (
-                <p className="text-xs text-slate-500">Write in your journal to enable submit.</p>
-              )}
             </div>
           </section>
         </form>
 
         <div className="mt-8 space-y-8">
-          <AIInsights sections={latestSections} loading={loading} error={error} />
-          <HistoryView entries={entries} />
+          <AIInsights sections={sections} loading={loading} error={error} />
+          <MindfulnessCard content={mindfulnessContent} loading={loading} />
+          <Suspense
+            fallback={
+              <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+                Loading history…
+              </p>
+            }
+          >
+            <HistoryView entries={state.entries} />
+          </Suspense>
         </div>
       </main>
 

@@ -1,7 +1,8 @@
 import { MAX_JOURNAL_LENGTH } from '../constants';
-import { sanitizeText } from '../utils/sanitize';
+import { sanitiseInput } from '../utils/sanitize';
 
 /**
+ * @component
  * Daily journaling textarea with validation feedback.
  * @param {{
  *   value: string,
@@ -18,8 +19,8 @@ export default function JournalEntry({ value, onChange, disabled = false, valida
     : 'journal-hint journal-char-count';
 
   const handleChange = (event) => {
-    const next = sanitizeText(event.target.value);
-    onChange(next.length <= MAX_JOURNAL_LENGTH ? next : next.slice(0, MAX_JOURNAL_LENGTH));
+    const next = sanitiseInput(event.target.value);
+    onChange(next);
   };
 
   return (

@@ -4,7 +4,8 @@ import { MOOD_EMOJIS, MOOD_LABELS } from '../constants';
 const MOOD_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /**
- * Visual 1–10 mood scale with emoji indicators.
+ * @component
+ * Visual 1–10 mood scale with emoji indicators and accessible range slider.
  * @param {{
  *   selectedMood: number | null,
  *   onSelect: (mood: number) => void,
@@ -45,6 +46,8 @@ export default function MoodSelector({
     [onSelect]
   );
 
+  const sliderValue = selectedMood ?? 5;
+
   return (
     <fieldset
       className="space-y-3"
@@ -56,8 +59,30 @@ export default function MoodSelector({
         How are you feeling right now?
       </legend>
       <p className="text-sm text-slate-600">
-        Select a mood from 1 (very low) to 10 (excellent). Use arrow keys to move between options.
+        Select a mood from 1 (very low) to 10 (excellent).
       </p>
+
+      <div className="rounded-xl bg-slate-50 px-3 py-3">
+        <label htmlFor="mood-slider" className="block text-xs font-medium text-slate-600">
+          Mood slider
+        </label>
+        <input
+          id="mood-slider"
+          type="range"
+          min="1"
+          max="10"
+          step="1"
+          value={sliderValue}
+          disabled={disabled}
+          aria-valuemin={1}
+          aria-valuemax={10}
+          aria-valuenow={sliderValue}
+          aria-label="Mood slider from 1 to 10"
+          onChange={(event) => onSelect(Number(event.target.value))}
+          className="mt-2 w-full accent-wellness-600"
+        />
+      </div>
+
       <div
         className="grid grid-cols-5 gap-2 sm:grid-cols-10"
         role="group"
@@ -70,7 +95,7 @@ export default function MoodSelector({
               key={mood}
               id={`mood-btn-${mood}`}
               type="button"
-              aria-label={`Mood ${mood} of 10, ${MOOD_LABELS[mood]}`}
+              aria-label={`Mood ${mood} out of 10`}
               aria-pressed={isSelected}
               disabled={disabled}
               tabIndex={selectedMood === null ? (mood === 5 ? 0 : -1) : isSelected ? 0 : -1}

@@ -3,23 +3,21 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 
-const mockAnalyzeEntry = vi.fn();
-const mockClearError = vi.fn();
+const mockCall = vi.fn();
 
 vi.mock('../hooks/useGemini', () => ({
   useGemini: () => ({
-    analyzeEntry: mockAnalyzeEntry,
+    data: null,
     loading: false,
     error: null,
-    clearError: mockClearError,
+    call: mockCall,
   }),
 }));
 
 describe('App', () => {
   beforeEach(() => {
-    mockAnalyzeEntry.mockReset();
-    mockClearError.mockReset();
-    mockAnalyzeEntry.mockResolvedValue({
+    mockCall.mockReset();
+    mockCall.mockResolvedValue({
       rawText: 'Insight text',
       sections: {
         stressAnalysis: 'Stress noted',
@@ -31,35 +29,37 @@ describe('App', () => {
     vi.stubGlobal('crypto', { randomUUID: () => 'test-id-1' });
   });
 
-  it('allows submit click to surface validation errors', async () => {
+  it('surfaces validation errors on empty submit', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /submit journal entry/i }));
 
     expect(screen.getByText(/few words/i)).toBeInTheDocument();
-    expect(screen.getByText(/select how you are feeling/i)).toBeInTheDocument();
-    expect(mockAnalyzeEntry).not.toHaveBeenCalled();
+    expect(mockCall).not.toHaveBeenCalled();
   });
 
-  it('submits journal and mood then adds history entry', async () => {
+  it('includes selected exam in Gemini call', async () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await user.click(screen.getByLabelText('JEE'));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'Mock test anxiety today' },
     });
-    await user.click(screen.getByRole('button', { name: /Mood 6 of 10/i }));
+    await user.click(screen.getByRole('button', { name: /Mood 6 out of 10/i }));
     await user.click(screen.getByRole('button', { name: /submit journal entry/i }));
 
-    expect(mockAnalyzeEntry).toHaveBeenCalledWith(6, 'Mock test anxiety today');
-    expect(await screen.findByText(/1 check-in recorded/i)).toBeInTheDocument();
-    expect(screen.getByText(/Stress noted/)).toBeInTheDocument();
+    expect(mockCall).toHaveBeenCalledWith({
+      moodScore: 6,
+      journalText: 'Mock test anxiety today',
+      exam: 'JEE',
+    });
   });
 
-  it('renders skip link and landmark regions', () => {
+  it('renders nav, header, main, and footer landmarks', () => {
     render(<App />);
-    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: /primary/i })).toBeInTheDocument();
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();

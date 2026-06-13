@@ -1,7 +1,10 @@
+import { SECTION_HEADINGS } from '../constants';
+
 /**
- * Displays parsed AI insights with loading and error states.
+ * @component
+ * Displays parsed AI insight sections with loading and error states.
  * @param {{
- *   sections: { stressAnalysis?: string, copingStrategies?: string, mindfulnessExercise?: string, motivationalMessage?: string } | null,
+ *   sections: { stressAnalysis?: string, copingStrategies?: string, motivationalMessage?: string } | null,
  *   loading: boolean,
  *   error: string | null
  * }} props
@@ -25,15 +28,6 @@ export default function AIInsights({ sections, loading, error }) {
           <p className="text-sm text-slate-600">
             Reading your entry with care — this usually takes a few seconds…
           </p>
-        </div>
-        <div className="mt-4 space-y-3" aria-hidden="true">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-4 animate-pulse rounded bg-slate-200 motion-reduce:animate-none"
-              style={{ width: `${90 - i * 15}%` }}
-            />
-          ))}
         </div>
       </section>
     );
@@ -65,7 +59,7 @@ export default function AIInsights({ sections, loading, error }) {
           Your wellness companion
         </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Submit your journal and mood to receive personalised insights, coping tips, and a mindfulness exercise.
+          Submit your journal and mood to receive personalised insights and coping tips.
         </p>
       </section>
     );
@@ -74,30 +68,20 @@ export default function AIInsights({ sections, loading, error }) {
   const insightBlocks = [
     {
       id: 'stress-analysis',
-      title: 'Stress & emotional patterns',
+      title: SECTION_HEADINGS.stress,
       content: sections.stressAnalysis,
-      icon: '🔍',
       accent: 'border-l-wellness-600 bg-wellness-50',
     },
     {
       id: 'coping-strategies',
-      title: 'Coping strategies for you',
+      title: SECTION_HEADINGS.coping,
       content: sections.copingStrategies,
-      icon: '🌱',
       accent: 'border-l-emerald-600 bg-emerald-50',
-    },
-    {
-      id: 'mindfulness-exercise',
-      title: 'Mindfulness exercise',
-      content: sections.mindfulnessExercise,
-      icon: '🧘',
-      accent: 'border-l-calm-600 bg-calm-50',
     },
     {
       id: 'motivational-message',
       title: 'A note for you',
       content: sections.motivationalMessage,
-      icon: '💛',
       accent: 'border-l-amber-500 bg-amber-50',
     },
   ].filter((block) => block.content?.trim());
@@ -120,11 +104,12 @@ export default function AIInsights({ sections, loading, error }) {
             aria-labelledby={`${block.id}-title`}
             className={`rounded-xl border-l-4 p-4 ${block.accent}`}
           >
-            <h3 id={`${block.id}-title`} className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <span aria-hidden="true">{block.icon}</span>
+            <h3 id={`${block.id}-title`} className="text-sm font-semibold text-slate-900">
               {block.title}
             </h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{block.content}</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+              {block.content}
+            </p>
           </article>
         ))}
       </div>
