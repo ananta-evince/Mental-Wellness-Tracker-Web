@@ -1,11 +1,23 @@
+import { memo, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { EXAMS, EXAM_META } from '../constants';
 
 /**
- * @component
- * Exam selector for onboarding — NEET, JEE, CUET, CAT, GATE, UPSC.
- * @param {{ selectedExam: string, onSelect: (exam: string) => void, disabled?: boolean }} props
+ * @component ExamSelector
+ * @description Exam selector for onboarding — NEET, JEE, CUET, CAT, GATE, UPSC
+ * @param {Object} props
+ * @param {string} props.selectedExam - currently selected exam name
+ * @param {Function} props.onSelect - callback when an exam is selected
+ * @param {boolean} [props.disabled] - disables exam selection
  */
-export default function ExamSelector({ selectedExam, onSelect, disabled = false }) {
+function ExamSelector({ selectedExam, onSelect, disabled = false }) {
+  const handleExamChange = useCallback(
+    (exam) => {
+      onSelect(exam);
+    },
+    [onSelect]
+  );
+
   return (
     <fieldset className="space-y-4" disabled={disabled}>
       <legend id="exam-legend" className="sr-only">
@@ -42,7 +54,7 @@ export default function ExamSelector({ selectedExam, onSelect, disabled = false 
                 checked={isSelected}
                 disabled={disabled}
                 aria-label={exam}
-                onChange={() => onSelect(exam)}
+                onChange={() => handleExamChange(exam)}
                 className="sr-only"
               />
               <div className="flex items-start justify-between gap-2">
@@ -64,3 +76,11 @@ export default function ExamSelector({ selectedExam, onSelect, disabled = false 
     </fieldset>
   );
 }
+
+ExamSelector.propTypes = {
+  selectedExam: PropTypes.string.isRequired,
+  onSelect: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
+
+export default memo(ExamSelector);

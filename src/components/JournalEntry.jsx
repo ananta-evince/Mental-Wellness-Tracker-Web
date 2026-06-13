@@ -1,25 +1,29 @@
-import { MAX_JOURNAL_LENGTH } from '../constants';
+import { memo, useCallback } from 'react';
+import PropTypes from 'prop-types';
+import { CHAR_LIMIT_WARNING_RATIO, MAX_JOURNAL_LENGTH } from '../constants';
 
 /**
- * @component
- * Daily journaling textarea with validation feedback.
- * @param {{
- *   value: string,
- *   onChange: (value: string) => void,
- *   disabled?: boolean,
- *   validationError?: string | null
- * }} props
+ * @component JournalEntry
+ * @description Renders the daily journal input form
+ * @param {Object} props
+ * @param {string} props.value - current journal text
+ * @param {Function} props.onChange - callback when journal text changes
+ * @param {boolean} [props.disabled] - disables the textarea
+ * @param {string | null} [props.validationError] - validation message to display
  */
-export default function JournalEntry({ value, onChange, disabled = false, validationError = null }) {
+function JournalEntry({ value, onChange, disabled = false, validationError = null }) {
   const charCount = value.length;
-  const isNearLimit = charCount >= MAX_JOURNAL_LENGTH * 0.9;
+  const isNearLimit = charCount >= MAX_JOURNAL_LENGTH * CHAR_LIMIT_WARNING_RATIO;
   const describedBy = validationError
     ? 'journal-hint journal-char-count journal-error'
     : 'journal-hint journal-char-count';
 
-  const handleChange = (event) => {
-    onChange(event.target.value.slice(0, MAX_JOURNAL_LENGTH));
-  };
+  const handleChange = useCallback(
+    (event) => {
+      onChange(event.target.value.slice(0, MAX_JOURNAL_LENGTH));
+    },
+    [onChange]
+  );
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-4 sm:p-5">
@@ -65,3 +69,12 @@ export default function JournalEntry({ value, onChange, disabled = false, valida
     </div>
   );
 }
+
+JournalEntry.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+  validationError: PropTypes.string,
+};
+
+export default memo(JournalEntry);

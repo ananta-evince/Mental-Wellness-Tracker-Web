@@ -1,5 +1,20 @@
 export const MAX_JOURNAL_LENGTH = 2000;
 
+export const CHAR_LIMIT_WARNING_RATIO = 0.9;
+
+export const MIN_MOOD = 1;
+
+export const MAX_MOOD = 10;
+
+export const MOOD_SCALE_MIDPOINT = 5;
+
+export const MOOD_VALUES = Array.from(
+  { length: MAX_MOOD - MIN_MOOD + 1 },
+  (_, index) => MIN_MOOD + index
+);
+
+export const SPARKLINE_WINDOW = 7;
+
 export const REQUEST_TIMEOUT_MS = 30000;
 
 export const GEMINI_MODEL = 'gemini-flash-latest';
@@ -22,6 +37,8 @@ export const SECTION_HEADINGS = {
   coping: 'Personalised coping strategies',
   mindfulness: 'Adaptive mindfulness exercise',
 };
+
+export const FEATURE_PILLS = ['Daily journaling', 'Mood tracking', 'AI insights', 'Mindfulness'];
 
 /**
  * Builds the Gemini system prompt with the selected exam referenced by name.

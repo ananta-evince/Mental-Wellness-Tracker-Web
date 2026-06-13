@@ -1,12 +1,13 @@
-import { lazy, Suspense, useCallback, useReducer } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useReducer } from 'react';
 import AIInsights from './components/AIInsights';
+import ErrorBoundary from './components/ErrorBoundary';
 import ExamSelector from './components/ExamSelector';
 import JournalEntry from './components/JournalEntry';
 import MindfulnessCard from './components/MindfulnessCard';
 import MoodSelector from './components/MoodSelector';
-import { EXAM_META } from './constants';
+import { EXAM_META, FEATURE_PILLS } from './constants';
 import { useGemini } from './hooks/useGemini';
-import { sanitiseInput } from './utils/sanitize';
+import { validateCheckInFields } from './utils/validation';
 
 const HistoryView = lazy(() => import('./components/HistoryView'));
 
@@ -23,6 +24,7 @@ const INITIAL_STATE = {
 /**
  * @param {typeof INITIAL_STATE} state
  * @param {{ type: string, payload?: object }} action
+ * @returns {typeof INITIAL_STATE}
  */
 function journalReducer(state, action) {
   switch (action.type) {
@@ -58,43 +60,54 @@ function journalReducer(state, action) {
 }
 
 /**
- * @component
- * Root application — exam onboarding, journaling, mood logging, and AI wellness insights.
+ * Dispatches validation errors from check-in field validation.
+ * @param {Function} dispatch
+ * @param {{ journalError: string | null, moodError: string | null }} validation
+ */
+function dispatchValidationErrors(dispatch, validation) {
+  if (validation.journalError) {
+    dispatch({ type: 'SET_JOURNAL_ERROR', payload: { message: validation.journalError } });
+  }
+  if (validation.moodError) {
+    dispatch({ type: 'SET_MOOD_ERROR', payload: { message: validation.moodError } });
+  }
+}
+
+/**
+ * @component App
+ * @description Root application — exam onboarding, journaling, mood logging, and AI wellness insights
  */
 export default function App() {
   const [state, dispatch] = useReducer(journalReducer, INITIAL_STATE);
   const { data, loading, error, call } = useGemini();
   const examMeta = EXAM_META[state.selectedExam];
 
+  const handleExamSelect = useCallback((exam) => {
+    dispatch({ type: 'SET_EXAM', payload: { exam } });
+  }, []);
+
+  const handleJournalChange = useCallback((text) => {
+    dispatch({ type: 'SET_JOURNAL', payload: { text } });
+  }, []);
+
+  const handleMoodSelect = useCallback((mood) => {
+    dispatch({ type: 'SET_MOOD', payload: { mood } });
+  }, []);
+
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
       dispatch({ type: 'CLEAR_VALIDATION' });
 
-      const sanitised = sanitiseInput(state.journalText);
-      let hasError = false;
-
-      if (!sanitised) {
-        dispatch({
-          type: 'SET_JOURNAL_ERROR',
-          payload: { message: 'Please write at least a few words before submitting.' },
-        });
-        hasError = true;
+      const validation = validateCheckInFields(state.journalText, state.selectedMood);
+      if (!validation.isValid) {
+        dispatchValidationErrors(dispatch, validation);
+        return;
       }
-
-      if (state.selectedMood === null) {
-        dispatch({
-          type: 'SET_MOOD_ERROR',
-          payload: { message: 'Please select how you are feeling on the mood scale.' },
-        });
-        hasError = true;
-      }
-
-      if (hasError) return;
 
       const result = await call({
         moodScore: state.selectedMood,
-        journalText: sanitised,
+        journalText: validation.sanitised,
         exam: state.selectedExam,
       });
 
@@ -105,7 +118,7 @@ export default function App() {
             entry: {
               id: crypto.randomUUID(),
               timestamp: new Date().toISOString(),
-              journalText: sanitised,
+              journalText: validation.sanitised,
               mood: state.selectedMood,
               exam: state.selectedExam,
               sections: result.sections,
@@ -118,8 +131,15 @@ export default function App() {
     [state.journalText, state.selectedMood, state.selectedExam, call]
   );
 
-  const sections = state.latestSections ?? data?.sections ?? null;
-  const mindfulnessContent = sections?.mindfulnessExercise ?? null;
+  const sections = useMemo(
+    () => state.latestSections ?? data?.sections ?? null,
+    [state.latestSections, data?.sections]
+  );
+
+  const mindfulnessContent = useMemo(
+    () => sections?.mindfulnessExercise ?? null,
+    [sections]
+  );
 
   return (
     <div className="page-shell">
@@ -167,7 +187,7 @@ export default function App() {
             and receive personalised wellness support tailored to your {state.selectedExam} journey.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            {['Daily journaling', 'Mood tracking', 'AI insights', 'Mindfulness'].map((pill) => (
+            {FEATURE_PILLS.map((pill) => (
               <span
                 key={pill}
                 className="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 shadow-sm"
@@ -203,7 +223,7 @@ export default function App() {
             <div className="mt-6">
               <ExamSelector
                 selectedExam={state.selectedExam}
-                onSelect={(exam) => dispatch({ type: 'SET_EXAM', payload: { exam } })}
+                onSelect={handleExamSelect}
                 disabled={loading}
               />
             </div>
@@ -227,13 +247,13 @@ export default function App() {
             <div className="mt-6 space-y-6">
               <JournalEntry
                 value={state.journalText}
-                onChange={(text) => dispatch({ type: 'SET_JOURNAL', payload: { text } })}
+                onChange={handleJournalChange}
                 disabled={loading}
                 validationError={state.journalError}
               />
               <MoodSelector
                 selectedMood={state.selectedMood}
-                onSelect={(mood) => dispatch({ type: 'SET_MOOD', payload: { mood } })}
+                onSelect={handleMoodSelect}
                 disabled={loading}
                 validationError={state.moodError}
               />
@@ -279,18 +299,22 @@ export default function App() {
             </div>
           </div>
 
-          <AIInsights sections={sections} loading={loading} error={error} />
+          <ErrorBoundary>
+            <AIInsights sections={sections} loading={loading} error={error} />
+          </ErrorBoundary>
           <MindfulnessCard content={mindfulnessContent} loading={loading} />
 
-          <Suspense
-            fallback={
-              <div className="surface-card animate-pulse motion-reduce:animate-none">
-                <p className="text-sm text-slate-500">Loading history…</p>
-              </div>
-            }
-          >
-            <HistoryView entries={state.entries} />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="surface-card animate-pulse motion-reduce:animate-none">
+                  <p className="text-sm text-slate-500">Loading history…</p>
+                </div>
+              }
+            >
+              <HistoryView entries={state.entries} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </main>
 

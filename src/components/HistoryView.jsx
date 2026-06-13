@@ -1,7 +1,31 @@
-import { useMemo } from 'react';
-import { MOOD_EMOJIS, SECTION_HEADINGS } from '../constants';
+import { memo, useMemo } from 'react';
+import PropTypes from 'prop-types';
+import { MAX_MOOD, MIN_MOOD, MOOD_EMOJIS, SECTION_HEADINGS, SPARKLINE_WINDOW } from '../constants';
 
-const SPARKLINE_WINDOW = 7;
+const SPARKLINE_HEIGHT = 30;
+const SPARKLINE_BASELINE = 32;
+const SPARKLINE_RANGE = 26;
+const SPARKLINE_SINGLE_Y = 15;
+const COPING_PREVIEW_LENGTH = 100;
+
+const DATE_TIME_FORMAT_OPTIONS = {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+const entryShape = PropTypes.shape({
+  id: PropTypes.string.isRequired,
+  timestamp: PropTypes.string.isRequired,
+  journalText: PropTypes.string.isRequired,
+  mood: PropTypes.number.isRequired,
+  exam: PropTypes.string,
+  sections: PropTypes.shape({
+    copingStrategies: PropTypes.string,
+  }),
+});
 
 /**
  * Builds SVG polyline points for a mood sparkline.
@@ -10,46 +34,76 @@ const SPARKLINE_WINDOW = 7;
  */
 export function buildSparklinePoints(moods) {
   if (moods.length === 0) return '';
-  if (moods.length === 1) return '0,15 100,15';
+  if (moods.length === 1) return `0,${SPARKLINE_SINGLE_Y} 100,${SPARKLINE_SINGLE_Y}`;
+
+  const moodScale = MAX_MOOD - MIN_MOOD;
 
   return moods
     .map((mood, index) => {
       const x = (index / (moods.length - 1)) * 100;
-      const y = 30 - ((mood - 1) / 9) * 26;
+      const y = SPARKLINE_HEIGHT - ((mood - MIN_MOOD) / moodScale) * SPARKLINE_RANGE;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(' ');
 }
 
 /**
- * @component
- * Scrollable history of past entries with last-7 mood trend sparkline.
- * @param {{
- *   entries: Array<{ id: string, timestamp: string, journalText: string, mood: number, exam?: string, sections?: object }>
- * }} props
+ * Sorts entries newest-first for display.
+ * @param {Array<object>} entries
+ * @returns {Array<object>}
  */
-export default function HistoryView({ entries }) {
-  const { sortedEntries, lastSevenMoods } = useMemo(() => {
-    const chronological = [...entries].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
+function sortEntriesNewestFirst(entries) {
+  return [...entries].sort(
+    (firstEntry, secondEntry) =>
+      new Date(secondEntry.timestamp).getTime() - new Date(firstEntry.timestamp).getTime()
+  );
+}
 
-    return {
-      sortedEntries: [...entries].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      ),
-      lastSevenMoods: chronological.slice(-SPARKLINE_WINDOW).map((e) => e.mood),
-    };
-  }, [entries]);
+/**
+ * Extracts moods from the last SPARKLINE_WINDOW entries in chronological order.
+ * @param {Array<object>} entries
+ * @returns {number[]}
+ */
+function extractLastSevenMoods(entries) {
+  const chronological = [...entries].sort(
+    (firstEntry, secondEntry) =>
+      new Date(firstEntry.timestamp).getTime() - new Date(secondEntry.timestamp).getTime()
+  );
 
+  return chronological.slice(-SPARKLINE_WINDOW).map((entry) => entry.mood);
+}
+
+/**
+ * Computes average mood for a list of mood scores.
+ * @param {number[]} moods
+ * @returns {string | null}
+ */
+function computeAverageMood(moods) {
+  if (moods.length === 0) return null;
+  const total = moods.reduce((sum, mood) => sum + mood, 0);
+  return (total / moods.length).toFixed(1);
+}
+
+/**
+ * @component HistoryView
+ * @description Scrollable history of past entries with mood trend sparkline
+ * @param {Object} props
+ * @param {Array<object>} props.entries - journal check-in entries
+ */
+function HistoryView({ entries }) {
+  const sortedEntries = useMemo(() => sortEntriesNewestFirst(entries), [entries]);
+  const lastSevenMoods = useMemo(() => extractLastSevenMoods(entries), [entries]);
   const sparklinePoints = useMemo(() => buildSparklinePoints(lastSevenMoods), [lastSevenMoods]);
-  const sparklineArea =
-    lastSevenMoods.length >= 2 && sparklinePoints ? `${sparklinePoints} 100,32 0,32` : '';
+  const sparklineArea = useMemo(() => {
+    if (lastSevenMoods.length < 2 || !sparklinePoints) return '';
+    return `${sparklinePoints} 100,${SPARKLINE_BASELINE} 0,${SPARKLINE_BASELINE}`;
+  }, [lastSevenMoods.length, sparklinePoints]);
+  const avgMood = useMemo(() => computeAverageMood(lastSevenMoods), [lastSevenMoods]);
 
-  const avgMood = useMemo(() => {
-    if (lastSevenMoods.length === 0) return null;
-    return (lastSevenMoods.reduce((sum, m) => sum + m, 0) / lastSevenMoods.length).toFixed(1);
-  }, [lastSevenMoods]);
+  const entryCountLabel =
+    entries.length === 0
+      ? 'Your entries will appear here after your first check-in.'
+      : `${entries.length} check-in${entries.length === 1 ? '' : 's'} recorded`;
 
   return (
     <section aria-labelledby="history-heading" className="surface-card">
@@ -59,11 +113,7 @@ export default function HistoryView({ entries }) {
           <h2 id="history-heading" className="mt-2 section-title">
             Your journey so far
           </h2>
-          <p className="section-subtitle">
-            {entries.length === 0
-              ? 'Your entries will appear here after your first check-in.'
-              : `${entries.length} check-in${entries.length === 1 ? '' : 's'} recorded`}
-          </p>
+          <p className="section-subtitle">{entryCountLabel}</p>
         </div>
 
         {lastSevenMoods.length >= 1 && (
@@ -131,13 +181,7 @@ export default function HistoryView({ entries }) {
                     </span>
                   )}
                   <time dateTime={entry.timestamp} className="text-xs font-medium text-slate-500">
-                    {new Date(entry.timestamp).toLocaleString(undefined, {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {new Date(entry.timestamp).toLocaleString(undefined, DATE_TIME_FORMAT_OPTIONS)}
                   </time>
                 </div>
                 <span
@@ -152,8 +196,8 @@ export default function HistoryView({ entries }) {
               {entry.sections?.copingStrategies && (
                 <p className="mt-3 rounded-lg bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900">
                   <span className="font-semibold">{SECTION_HEADINGS.coping}: </span>
-                  {entry.sections.copingStrategies.slice(0, 100)}
-                  {entry.sections.copingStrategies.length > 100 ? '…' : ''}
+                  {entry.sections.copingStrategies.slice(0, COPING_PREVIEW_LENGTH)}
+                  {entry.sections.copingStrategies.length > COPING_PREVIEW_LENGTH ? '…' : ''}
                 </p>
               )}
             </article>
@@ -163,3 +207,9 @@ export default function HistoryView({ entries }) {
     </section>
   );
 }
+
+HistoryView.propTypes = {
+  entries: PropTypes.arrayOf(entryShape).isRequired,
+};
+
+export default memo(HistoryView);

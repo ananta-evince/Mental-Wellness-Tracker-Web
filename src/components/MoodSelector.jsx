@@ -1,34 +1,36 @@
-import { useCallback } from 'react';
-import { MOOD_EMOJIS, MOOD_LABELS } from '../constants';
+import { memo, useCallback } from 'react';
+import PropTypes from 'prop-types';
+import {
+  MAX_MOOD,
+  MIN_MOOD,
+  MOOD_EMOJIS,
+  MOOD_LABELS,
+  MOOD_SCALE_MIDPOINT,
+  MOOD_VALUES,
+} from '../constants';
 
-const MOOD_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+export { MOOD_VALUES };
 
 /**
- * @component
- * Visual 1–10 mood scale with emoji indicators and accessible range slider.
- * @param {{
- *   selectedMood: number | null,
- *   onSelect: (mood: number) => void,
- *   disabled?: boolean,
- *   validationError?: string | null
- * }} props
+ * @component MoodSelector
+ * @description Visual 1–10 mood scale with emoji indicators and accessible range slider
+ * @param {Object} props
+ * @param {number | null} props.selectedMood - currently selected mood score
+ * @param {Function} props.onSelect - callback when mood is selected
+ * @param {boolean} [props.disabled] - disables mood controls
+ * @param {string | null} [props.validationError] - validation message to display
  */
-export default function MoodSelector({
-  selectedMood,
-  onSelect,
-  disabled = false,
-  validationError = null,
-}) {
+function MoodSelector({ selectedMood, onSelect, disabled = false, validationError = null }) {
   const handleKeyDown = useCallback(
     (event, mood) => {
-      const index = MOOD_VALUES.indexOf(mood);
-      let nextIndex = index;
+      const moodIndex = MOOD_VALUES.indexOf(mood);
+      let nextIndex = moodIndex;
 
       if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-        nextIndex = Math.min(index + 1, MOOD_VALUES.length - 1);
+        nextIndex = Math.min(moodIndex + 1, MOOD_VALUES.length - 1);
         event.preventDefault();
       } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-        nextIndex = Math.max(index - 1, 0);
+        nextIndex = Math.max(moodIndex - 1, 0);
         event.preventDefault();
       } else if (event.key === 'Home') {
         nextIndex = 0;
@@ -40,13 +42,28 @@ export default function MoodSelector({
         return;
       }
 
-      onSelect(MOOD_VALUES[nextIndex]);
-      document.getElementById(`mood-btn-${MOOD_VALUES[nextIndex]}`)?.focus();
+      const nextMood = MOOD_VALUES[nextIndex];
+      onSelect(nextMood);
+      document.getElementById(`mood-btn-${nextMood}`)?.focus();
     },
     [onSelect]
   );
 
-  const sliderValue = selectedMood ?? 5;
+  const handleSliderChange = useCallback(
+    (event) => {
+      onSelect(Number(event.target.value));
+    },
+    [onSelect]
+  );
+
+  const handleMoodClick = useCallback(
+    (mood) => {
+      onSelect(mood);
+    },
+    [onSelect]
+  );
+
+  const sliderValue = selectedMood ?? MOOD_SCALE_MIDPOINT;
   const moodScoreLabel = selectedMood !== null ? `${selectedMood}/10` : 'Select mood';
 
   return (
@@ -89,16 +106,16 @@ export default function MoodSelector({
         <input
           id="mood-slider"
           type="range"
-          min="1"
-          max="10"
+          min={MIN_MOOD}
+          max={MAX_MOOD}
           step="1"
           value={sliderValue}
           disabled={disabled}
-          aria-valuemin={1}
-          aria-valuemax={10}
+          aria-valuemin={MIN_MOOD}
+          aria-valuemax={MAX_MOOD}
           aria-valuenow={selectedMood ?? undefined}
           aria-label="Mood slider from 1 to 10"
-          onChange={(event) => onSelect(Number(event.target.value))}
+          onChange={handleSliderChange}
           className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gradient-to-r from-red-200 via-amber-200 to-emerald-300 accent-wellness-600 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-wellness-600 [&::-webkit-slider-thumb]:shadow-md"
         />
         <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-400">
@@ -122,8 +139,16 @@ export default function MoodSelector({
               aria-label={`Mood ${mood} out of 10`}
               aria-pressed={isSelected}
               disabled={disabled}
-              tabIndex={selectedMood === null ? (mood === 5 ? 0 : -1) : isSelected ? 0 : -1}
-              onClick={() => onSelect(mood)}
+              tabIndex={
+                selectedMood === null
+                  ? mood === MOOD_SCALE_MIDPOINT
+                    ? 0
+                    : -1
+                  : isSelected
+                    ? 0
+                    : -1
+              }
+              onClick={() => handleMoodClick(mood)}
               onKeyDown={(event) => handleKeyDown(event, mood)}
               className={`flex flex-col items-center rounded-xl border-2 px-1 py-2.5 text-center transition focus:outline-none focus:ring-2 focus:ring-wellness-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                 isSelected
@@ -157,4 +182,11 @@ export default function MoodSelector({
   );
 }
 
-export { MOOD_VALUES };
+MoodSelector.propTypes = {
+  selectedMood: PropTypes.number,
+  onSelect: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+  validationError: PropTypes.string,
+};
+
+export default memo(MoodSelector);

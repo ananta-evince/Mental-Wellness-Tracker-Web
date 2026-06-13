@@ -1,11 +1,15 @@
+import { memo } from 'react';
+import PropTypes from 'prop-types';
 import { SECTION_HEADINGS } from '../constants';
 
 /**
- * @component
- * Displays the adaptive mindfulness exercise from Gemini insights.
- * @param {{ content: string | null, loading?: boolean }} props
+ * @component MindfulnessCard
+ * @description Displays the adaptive mindfulness exercise from Gemini insights
+ * @param {Object} props
+ * @param {string | null} props.content - mindfulness exercise text
+ * @param {boolean} [props.loading] - whether AI analysis is in progress
  */
-export default function MindfulnessCard({ content, loading = false }) {
+function MindfulnessCard({ content, loading = false }) {
   if (loading) {
     return (
       <section aria-labelledby="mindfulness-heading" aria-busy="true" className="surface-card">
@@ -73,3 +77,10 @@ export default function MindfulnessCard({ content, loading = false }) {
     </section>
   );
 }
+
+MindfulnessCard.propTypes = {
+  content: PropTypes.string,
+  loading: PropTypes.bool,
+};
+
+export default memo(MindfulnessCard);
