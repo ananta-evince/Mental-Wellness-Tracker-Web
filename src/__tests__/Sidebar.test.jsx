@@ -1,29 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Sidebar from '../components/Sidebar';
-import { APP_PAGES } from '../constants';
+import Sidebar from '../components/layout/Sidebar';
+import { APP_NAME, APP_PAGES, NAV_ITEMS } from '../constants';
 
 describe('Sidebar', () => {
   const defaultProps = {
-    activePage: APP_PAGES.EXAM_JOURNEY,
+    activePage: APP_PAGES.HOME,
     onNavigate: vi.fn(),
-    selectedExam: 'NEET',
-    examEmoji: '🩺',
-    entryCount: 0,
+    onEmergencyCalm: vi.fn(),
   };
 
   it('renders primary navigation with all page links', () => {
     render(<Sidebar {...defaultProps} />);
 
     expect(screen.getByRole('navigation', { name: /primary/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Your exam journey' })).toHaveAttribute(
-      'aria-current',
-      'page'
-    );
-    expect(screen.getByRole('button', { name: "Today's check-in" })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Your personalised support' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Your journey so far' })).toBeInTheDocument();
+    NAV_ITEMS.forEach((item) => {
+      expect(screen.getByRole('button', { name: item.label })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('calls onNavigate when a nav item is clicked', async () => {
@@ -31,32 +26,28 @@ describe('Sidebar', () => {
     const onNavigate = vi.fn();
     render(<Sidebar {...defaultProps} onNavigate={onNavigate} />);
 
-    await user.click(screen.getByRole('button', { name: "Today's check-in" }));
-
+    await user.click(screen.getByRole('button', { name: 'Check-in' }));
     expect(onNavigate).toHaveBeenCalledWith(APP_PAGES.CHECK_IN);
   });
 
-  it('shows exam badge and empty check-in message', () => {
+  it('shows app name and emergency calm button', () => {
     render(<Sidebar {...defaultProps} />);
-
-    expect(screen.getByText('NEET')).toBeInTheDocument();
-    expect(screen.getByText(/no check-ins yet/i)).toBeInTheDocument();
+    expect(screen.getByText(APP_NAME)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /emergency calm/i })).toBeInTheDocument();
   });
 
-  it('closes mobile menu on Escape key', () => {
-    render(<Sidebar {...defaultProps} />);
-
-    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }));
-    expect(screen.getByRole('button', { name: /close navigation menu/i })).toBeInTheDocument();
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument();
+  it('shows welcome message when userName is provided', () => {
+    render(<Sidebar {...defaultProps} userName="Ananya" />);
+    expect(screen.getByText(/welcome back/i)).toBeInTheDocument();
+    expect(screen.getByText('Ananya')).toBeInTheDocument();
   });
 
-  it('traps focus inside mobile menu when open', () => {
-    render(<Sidebar {...defaultProps} />);
+  it('calls onEmergencyCalm when emergency button is clicked', async () => {
+    const user = userEvent.setup();
+    const onEmergencyCalm = vi.fn();
+    render(<Sidebar {...defaultProps} onEmergencyCalm={onEmergencyCalm} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }));
-    expect(screen.getByRole('button', { name: 'Your exam journey' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: /emergency calm/i }));
+    expect(onEmergencyCalm).toHaveBeenCalled();
   });
 });

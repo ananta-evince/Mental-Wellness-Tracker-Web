@@ -5,52 +5,42 @@ import CheckInPage from '../pages/CheckInPage';
 
 describe('CheckInPage', () => {
   const defaultProps = {
-    journalText: '',
-    onJournalChange: vi.fn(),
-    selectedMood: null,
-    onMoodSelect: vi.fn(),
-    journalError: null,
-    moodError: null,
     loading: false,
-    onSubmit: vi.fn((event) => event.preventDefault()),
+    onSubmit: vi.fn().mockResolvedValue(true),
   };
 
-  it('renders check-in form with accessible landmarks', () => {
+  it('renders check-in form with metric sliders', () => {
     render(<CheckInPage {...defaultProps} />);
 
-    expect(screen.getByRole('form', { name: /daily wellness check-in/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /today's check-in/i })).toBeInTheDocument();
-    expect(screen.getByText(/step 2 of 4/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /daily check-in/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/energy slider/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/stress level slider/i)).toBeInTheDocument();
   });
 
   it('disables submit while loading', () => {
     render(<CheckInPage {...defaultProps} loading />);
 
-    const submit = screen.getByRole('button', { name: /submit journal entry/i });
+    const submit = screen.getByRole('button', { name: /saving/i });
     expect(submit).toBeDisabled();
     expect(submit).toHaveAttribute('aria-busy', 'true');
   });
 
-  it('shows validation errors', () => {
-    render(
-      <CheckInPage
-        {...defaultProps}
-        journalError="Please write at least a few words."
-        moodError="Please select how you are feeling."
-      />
-    );
+  it('shows thank you message after successful submit', async () => {
+    const user = userEvent.setup();
+    render(<CheckInPage {...defaultProps} />);
 
-    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
-    expect(screen.getByText(/few words/i)).toBeInTheDocument();
-    expect(screen.getByText(/how you are feeling/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /submit daily check-in/i }));
+    expect(await screen.findByText(/thank you for checking in/i)).toBeInTheDocument();
   });
 
   it('calls onSubmit when form is submitted', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn((event) => event.preventDefault());
-    render(<CheckInPage {...defaultProps} onSubmit={onSubmit} journalText="Today was tough" selectedMood={5} />);
+    const onSubmit = vi.fn().mockResolvedValue(true);
+    render(<CheckInPage {...defaultProps} onSubmit={onSubmit} />);
 
-    await user.click(screen.getByRole('button', { name: /submit journal entry/i }));
-    expect(onSubmit).toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /submit daily check-in/i }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ energy: 5, stress: 5, confidence: 5 })
+    );
   });
 });

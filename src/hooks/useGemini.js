@@ -14,7 +14,7 @@ export function useGemini() {
   const abortRef = useRef(null);
   const lastCallAtRef = useRef(0);
 
-  const call = useCallback(async ({ moodScore, journalText, exam }) => {
+  const call = useCallback(async ({ moodScore, journalText, exam, userName, userAge }) => {
     const now = Date.now();
     if (now - lastCallAtRef.current < MIN_CALL_INTERVAL_MS) {
       setError('Please wait a moment before submitting again.');
@@ -55,7 +55,7 @@ export function useGemini() {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ moodScore, journalText: sanitisedText, exam }),
+        body: JSON.stringify({ moodScore, journalText: sanitisedText, exam, userName, userAge }),
       });
 
       const responseData = await response.json().catch(() => ({}));

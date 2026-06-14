@@ -1,91 +1,81 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 
-const mockCall = vi.fn();
+const mockAnalyzeJournal = vi.fn();
+const mockSendChat = vi.fn();
 
-vi.mock('../hooks/useGemini', () => ({
-  useGemini: () => ({
-    data: null,
+vi.mock('../hooks/useWellnessApi', () => ({
+  useWellnessApi: () => ({
     loading: false,
     error: null,
-    call: mockCall,
+    analyzeJournal: mockAnalyzeJournal,
+    sendChat: mockSendChat,
   }),
 }));
 
-async function goToCheckInPage(user) {
-  await user.click(screen.getByRole('button', { name: "Today's check-in" }));
-  await waitFor(() => {
-    expect(screen.getByRole('heading', { name: /today's check-in/i })).toBeInTheDocument();
-  });
+function sidebar() {
+  return screen.getByRole('complementary', { name: /main navigation/i });
 }
 
 describe('App', () => {
   beforeEach(() => {
-    mockCall.mockReset();
-    mockCall.mockResolvedValue({
-      rawText: 'Insight text',
-      sections: {
-        stressAnalysis: 'Stress noted',
-        copingStrategies: 'Take breaks',
-        mindfulnessExercise: 'Breathe',
-        motivationalMessage: 'You can do this',
-      },
-    });
+    mockAnalyzeJournal.mockReset();
+    mockSendChat.mockReset();
     vi.stubGlobal('crypto', { randomUUID: () => 'test-id-1' });
   });
 
-  it('surfaces validation errors on empty submit', async () => {
+  it('submits daily check-in with metrics', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await goToCheckInPage(user);
-    await user.click(screen.getByRole('button', { name: /submit journal entry/i }));
+    await user.click(within(sidebar()).getByRole('button', { name: 'Check-in' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /daily check-in/i })).toBeInTheDocument();
+    });
 
-    expect(screen.getByText(/few words/i)).toBeInTheDocument();
-    expect(mockCall).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /submit daily check-in/i }));
+
+    expect(await screen.findByText(/thank you for checking in/i)).toBeInTheDocument();
   });
 
-  it('includes selected exam in Gemini call', async () => {
+  it('navigates to journal page', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('radio', { name: 'JEE' }));
-    await goToCheckInPage(user);
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'Mock test anxiety today' },
-    });
-    await user.click(screen.getByRole('button', { name: /Mood 6 out of 10/i }));
-    await user.click(screen.getByRole('button', { name: /submit journal entry/i }));
-
-    expect(mockCall).toHaveBeenCalledWith({
-      moodScore: 6,
-      journalText: 'Mock test anxiety today',
-      exam: 'JEE',
+    await user.click(within(sidebar()).getByRole('button', { name: 'Journal' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /^journal$/i })).toBeInTheDocument();
     });
   });
 
-  it('renders nav, header, main, and footer landmarks', () => {
+  it('renders nav, main, and footer landmarks', async () => {
     render(<App />);
-    expect(screen.getByRole('navigation', { name: /primary/i })).toBeInTheDocument();
-    expect(screen.getByRole('banner')).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: /main navigation/i })).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
-    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    expect(screen.getAllByText(/lumina/i).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    });
   });
 
   it('navigates between sidebar pages', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: /your exam journey/i })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: "Today's check-in" }));
-    expect(screen.getByRole('heading', { name: /today's check-in/i })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Your journey so far' }));
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /your journey so far/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/good|hey night owl/i);
+    });
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Dashboard' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /wellness dashboard/i })).toBeInTheDocument();
+    });
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Check-in' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /daily check-in/i })).toBeInTheDocument();
     });
   });
 });

@@ -1,6 +1,8 @@
-# Mental Wellness Tracker
+# Lumina – Your AI Wellness Companion
 
 GenAI-powered mental wellness companion for students preparing for **NEET, JEE, CUET, CAT, GATE, and UPSC**. Daily journaling, mood tracking, and personalised AI insights via Google Gemini.
+
+Inspired by companion-style exam prep wellness apps — with a unique **Lumina** identity, onboarding flow, and aurora-inspired design.
 
 ## Local setup
 

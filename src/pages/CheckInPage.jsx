@@ -1,104 +1,82 @@
-import { memo } from 'react';
+import { memo, useCallback, useState } from 'react';
 import PropTypes from 'prop-types';
-import JournalEntry from '../components/JournalEntry';
-import MoodSelector from '../components/MoodSelector';
+import PageHeader from '../components/ui/PageHeader';
+import { CHECKIN_METRICS, MAX_MOOD, MIN_MOOD } from '../constants';
 
-/**
- * @component CheckInPage
- * @description Daily journal and mood check-in page
- * @param {Object} props
- * @param {string} props.journalText - current journal text
- * @param {Function} props.onJournalChange - callback when journal text changes
- * @param {number | null} props.selectedMood - currently selected mood score
- * @param {Function} props.onMoodSelect - callback when mood is selected
- * @param {string | null} props.journalError - journal validation message
- * @param {string | null} props.moodError - mood validation message
- * @param {boolean} props.loading - disables inputs while AI is processing
- * @param {Function} props.onSubmit - form submit handler
- */
-function CheckInPage({
-  journalText,
-  onJournalChange,
-  selectedMood,
-  onMoodSelect,
-  journalError,
-  moodError,
-  loading,
-  onSubmit,
-}) {
+const DEFAULT_METRICS = {
+  energy: 5, stress: 5, confidence: 5, sleepQuality: 5, studySatisfaction: 5,
+};
+
+function CheckInPage({ onSubmit, loading }) {
+  const [metrics, setMetrics] = useState(DEFAULT_METRICS);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleChange = useCallback((id, value) => {
+    setMetrics((prev) => ({ ...prev, [id]: Number(value) }));
+  }, []);
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    const ok = await onSubmit(metrics);
+    if (ok) setSubmitted(true);
+  }, [metrics, onSubmit]);
+
+  if (submitted) {
+    return (
+      <div className="mx-auto max-w-lg space-y-6 py-8 text-center sm:py-12">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/10 text-4xl" aria-hidden="true">🌟</div>
+        <h2 className="text-2xl font-bold text-amber-400 aurora-text-glow">Thank you for checking in</h2>
+        <p className="text-sm leading-relaxed text-slate-400">Remember, every day you show up for yourself is a victory.</p>
+        <button type="button" onClick={() => setSubmitted(false)} className="btn-ghost w-full sm:w-auto">Check in again</button>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate aria-label="Daily wellness check-in form">
-      <section aria-labelledby="checkin-heading" className="surface-card">
-        <div className="flex items-start gap-3">
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-wellness-600 text-sm font-bold text-white"
-            aria-hidden="true"
-          >
-            2
-          </span>
-          <span className="sr-only">Step 2 of 4:</span>
-          <div>
-            <span className="section-badge">Daily check-in</span>
-            <h2 id="checkin-heading" className="mt-2 section-title">
-              Today&apos;s check-in
-            </h2>
-            <p className="section-subtitle">
-              Share how preparation feels today — no judgment, just honest reflection.
-            </p>
+    <div className="mx-auto max-w-lg">
+      <PageHeader title="Daily Check-in" subtitle="How are you feeling today?" />
+
+      <form onSubmit={handleSubmit} className="space-y-3 pb-20 md:pb-0">
+        {CHECKIN_METRICS.map(({ id, label, emoji }) => (
+          <div key={id} className="metric-card">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-lg" aria-hidden="true">{emoji}</span>
+                <span className="text-sm font-semibold text-white">{label}</span>
+              </div>
+              <span className="rounded-lg bg-amber-500/10 px-2.5 py-1 text-sm font-bold tabular-nums text-amber-400">
+                {metrics[id]}/{MAX_MOOD}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={MIN_MOOD}
+              max={MAX_MOOD}
+              value={metrics[id]}
+              onChange={(e) => handleChange(id, e.target.value)}
+              className="metric-slider metric-slider-track"
+              aria-label={`${label} slider`}
+            />
+            <div className="mt-1.5 flex justify-between text-[10px] text-slate-600">
+              <span>Low</span>
+              <span>High</span>
+            </div>
           </div>
-        </div>
-        <div className="mt-6 space-y-6">
-          <JournalEntry
-            value={journalText}
-            onChange={onJournalChange}
-            disabled={loading}
-            validationError={journalError}
-          />
-          <MoodSelector
-            selectedMood={selectedMood}
-            onSelect={onMoodSelect}
-            disabled={loading}
-            validationError={moodError}
-          />
-        </div>
-        <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-slate-500">
-            Powered by Gemini AI · Your data stays in this session only
-          </p>
-          <button
-            type="submit"
-            disabled={loading}
-            aria-label="Submit journal entry for AI wellness analysis"
-            aria-busy={loading}
-            className="btn-primary w-full sm:w-auto"
-          >
-            {loading ? (
-              <>
-                <span
-                  className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none"
-                  aria-hidden="true"
-                />
-                Analyzing your entry…
-              </>
-            ) : (
-              <>✨ Get wellness insights</>
-            )}
+        ))}
+
+        <div className="sticky-mobile-cta md:mt-2">
+          <button type="submit" disabled={loading} className="btn-primary w-full" aria-busy={loading}>
+            {loading ? 'Saving…' : 'Submit daily check-in'}
           </button>
         </div>
-      </section>
-    </form>
+      </form>
+    </div>
   );
 }
 
 CheckInPage.propTypes = {
-  journalText: PropTypes.string.isRequired,
-  onJournalChange: PropTypes.func.isRequired,
-  selectedMood: PropTypes.number,
-  onMoodSelect: PropTypes.func.isRequired,
-  journalError: PropTypes.string,
-  moodError: PropTypes.string,
-  loading: PropTypes.bool.isRequired,
   onSubmit: PropTypes.func.isRequired,
+  loading: PropTypes.bool,
 };
 
 export default memo(CheckInPage);
